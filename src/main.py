@@ -12,11 +12,13 @@ HARD = [20, 24, 25]
 # Square values
 UNKNOWN = -1
 MINE = -2
+# 0 for blank space and n >= 1 means that's the number showing on the square
 
 
-def click_square(canvas, row, col, square_size, left_click):
-  X_OFFSET = -1 * (col / 2 * square_size) + 10
-  Y_OFFSET = -1 * (row / 2 * square_size) + 10
+def click_square(canvas, row, col, left_click):
+  print(square_size)
+  X_OFFSET = -1 * (cols / 2 * square_size) + 10
+  Y_OFFSET = -1 * (rows / 2 * square_size) + 10
   action = webdriver.common.action_chains.ActionChains(driver)
   action.move_to_element_with_offset(canvas, X_OFFSET + col * square_size, Y_OFFSET + row * square_size)
   if left_click:
@@ -26,12 +28,14 @@ def click_square(canvas, row, col, square_size, left_click):
   action.perform()
 
 
-def step(canvas, row, col, square_size):
-   click_square(canvas, row, col, square_size, True)
+def step(canvas, row, col):
+   click_square(canvas, row, col, True)
+   print(f"Stepped on square at {row}, {col}")
 
 
-def mark_mine(canvas, row, col, square_size):
-   click_square(canvas, row, col, square_size, False)
+def mark_mine(canvas, row, col):
+   click_square(canvas, row, col, False)
+   print(f"Marked mine at {row}, {col}")
 
 
 def find_size(height, width):
@@ -52,6 +56,7 @@ canvas = driver.find_element(By.TAG_NAME, "canvas")
 [rows, cols, square_size] = find_size(canvas.get_attribute("height"), canvas.get_attribute("width"))
 print(f"Aha, I'm playing with {rows} rows and {cols} cols")
 field = [ [UNKNOWN] * cols for i in range(rows) ]
-mark_mine(canvas, rows - 1, cols - 1, square_size)
+#mark_mine(canvas, rows - 1, cols - 1, square_size)
+mark_mine(canvas, 0, 0)
 
 time.sleep(10)
