@@ -2,6 +2,9 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
+from PIL import Image
+from io import BytesIO
+from math import ceil
 import time
 
 # Minesweeper levels
@@ -14,6 +17,19 @@ UNKNOWN = -1
 MINE = -2
 # 0 for blank space and n >= 1 means that's the number showing on the square
 
+COLOR_CODES = {
+  (229, 194, 159, 255): 0,
+  (215, 184, 153, 255): 0,
+  (170, 215, 81, 255): UNKNOWN,
+  (162, 209, 73, 255): UNKNOWN,
+  (135, 175, 58, 255): -10, #edge border color
+  (242, 54, 7, 255): MINE,
+  (230, 51, 7, 255): MINE,
+  (25, 118, 210, 255): 1, # blue 1
+  (56, 142, 60, 255): 2, # green 2
+  (211, 47, 47, 255): 3, # red 3 
+  (123, 31, 162, 255): 4, # purple 4
+}
 
 def click_square(canvas, row, col, left_click):
   print(square_size)
@@ -28,6 +44,87 @@ def click_square(canvas, row, col, left_click):
   action.perform()
 
 
+def borders_unknown_square(row, col):
+  print(f"borders_unknown_square for {row}, {col}")
+  row_min = row - 1 if row > 0 else 0
+  col_min = col - 1 if col > 0 else 0
+  row_max = row + 2 if row < rows - 1 else row + 1
+  col_max = col + 2 if col < cols - 1 else col + 1
+  for i in range(row_min, row_max):
+    for j in range(col_min, col_max):
+      if field[i][j] == UNKNOWN:
+        return True
+  return False
+
+
+def mark_perimeter(row, col):
+  print(f"mark_perimeter for {row}, {col}")
+  mine_count = field[row][col]
+  mines_found = 0
+  unknown_found = 0
+  row_min = row - 1 if row > 0 else 0
+  col_min = col - 1 if col > 0 else 0
+  row_max = row + 2 if row < rows - 1 else row + 1
+  col_max = col + 2 if col < cols - 1 else col + 1
+  for i in range(row_min, row_max):
+    for j in range(col_min, col_max):
+      if field[i][j] == MINE: 
+        mines_found += 1
+      elif field[i][j] == UNKNOWN:
+        unknown_found += 1
+  if mines_found == 0 and mine_count == unknown_found:
+    # All the unknowns are mines, mark them
+    for i in range(row_min, row_max):
+      for j in range(col_min, col_max):
+        if field[i][j] == UNKNOWN:
+          mark_mine(canvas, i, j)
+  if mines_found == mine_count:
+    # All the mines are already marked, simulate chord click
+    for i in range(row_min, row_max):
+      for j in range(col_min, col_max):
+        if field[i][j] == UNKNOWN:
+          step(canvas, i, j)
+
+
+def read_square(pixels, row, col):
+  #print(f"{row}, {col}: {pixels[col*30 + 16, row*30 + 15]}")
+  try:
+    if COLOR_CODES[pixels[ceil((col + 0.25) * square_size), ceil((row+ 0.25) * square_size)]] == MINE:
+      # Center of mine square looks unknown, check the upper left area for mine color
+      return MINE
+    else:
+      return COLOR_CODES[pixels[(col + 0.5) * square_size + 1, (row + 0.5) * square_size]]
+  except KeyError: 
+    print("UNKNOWN COLOR HELLLLLPPPPPP")
+    for x in range(col * square_size, (col + 1) * square_size):
+      for y in range(row * square_size, (row + 1) * square_size):
+        print(f"{x}, {y}: {pixels[x,y]}")
+
+
+def read_field():
+  time.sleep(1) # Wait for animation to end
+  png = canvas.screenshot_as_png
+  canvas.screenshot('temp.png')
+  image = Image.open(BytesIO(png))
+  print(f"Canvas image size is {image.size}")
+  pixels = image.load()
+  # Sync field to the latest on screen
+  for i in range(0, rows):
+    for j in range(0, cols):
+      field[i][j] = read_square(pixels, i, j)
+  for i in range(0, rows):
+    for j in range(0, cols):
+      print("%2d" % (field[i][j]), end="")
+    print()
+
+
+def interpret_field():
+  for row in range(0, rows):
+    for col in range(0, cols):
+      if field[row][col] > 0 and borders_unknown_square(row, col):
+        mark_perimeter(row, col)
+
+
 def step(canvas, row, col):
    click_square(canvas, row, col, True)
    print(f"Stepped on square at {row}, {col}")
@@ -36,6 +133,7 @@ def step(canvas, row, col):
 def mark_mine(canvas, row, col):
    click_square(canvas, row, col, False)
    print(f"Marked mine at {row}, {col}")
+   field[row][col] = MINE
 
 
 def find_size(height, width):
@@ -49,14 +147,20 @@ def find_size(height, width):
     
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-
 driver.get("https://www.google.com/search?q=minesweeper")
-time.sleep(5)
+time.sleep(5) # Pause so I can manually hit Play and create board
 canvas = driver.find_element(By.TAG_NAME, "canvas")
 [rows, cols, square_size] = find_size(canvas.get_attribute("height"), canvas.get_attribute("width"))
 print(f"Aha, I'm playing with {rows} rows and {cols} cols")
 field = [ [UNKNOWN] * cols for i in range(rows) ]
-#mark_mine(canvas, rows - 1, cols - 1, square_size)
-mark_mine(canvas, 0, 0)
+#mark_mine(canvas, 0, 0)
+step(canvas, 0, 0)
+read_field()
+interpret_field()
+#while game isn't finished:
+#  read field
+#  mark or step on everything you can 
+#  if stuck then guess 
 
-time.sleep(10)
+time.sleep(40)
+read_field()
