@@ -20,6 +20,8 @@ MINE = -2
 COLOR_CODES = {
   (229, 194, 159, 255): 0,
   (215, 184, 153, 255): 0,
+  (236, 209, 183, 255): 0, # non-mine pixel (when checking mine pixel)
+  (225, 202, 179, 255): 0, # non-mine pixel (when checking mine pixel)
   (170, 215, 81, 255): UNKNOWN,
   (162, 209, 73, 255): UNKNOWN,
   (135, 175, 58, 255): -10, #edge border color
@@ -45,7 +47,6 @@ def click_square(canvas, row, col, left_click):
 
 
 def borders_unknown_square(row, col):
-  print(f"borders_unknown_square for {row}, {col}")
   row_min = row - 1 if row > 0 else 0
   col_min = col - 1 if col > 0 else 0
   row_max = row + 2 if row < rows - 1 else row + 1
@@ -58,7 +59,7 @@ def borders_unknown_square(row, col):
 
 
 def mark_perimeter(row, col):
-  print(f"mark_perimeter for {row}, {col}")
+  #print(f"mark_perimeter for {row}, {col}")
   mine_count = field[row][col]
   mines_found = 0
   unknown_found = 0
@@ -72,30 +73,31 @@ def mark_perimeter(row, col):
         mines_found += 1
       elif field[i][j] == UNKNOWN:
         unknown_found += 1
-  if mines_found == 0 and mine_count == unknown_found:
-    # All the unknowns are mines, mark them
-    for i in range(row_min, row_max):
-      for j in range(col_min, col_max):
-        if field[i][j] == UNKNOWN:
-          mark_mine(canvas, i, j)
   if mines_found == mine_count:
     # All the mines are already marked, simulate chord click
     for i in range(row_min, row_max):
       for j in range(col_min, col_max):
         if field[i][j] == UNKNOWN:
           step(canvas, i, j)
+          field_dirty = True
+  if mine_count == unknown_found + mines_found:
+    # All the unknowns are mines, mark them
+    for i in range(row_min, row_max):
+      for j in range(col_min, col_max):
+        if field[i][j] == UNKNOWN:
+          mark_mine(canvas, i, j)
+          field_dirty = True
 
 
 def read_square(pixels, row, col):
-  #print(f"{row}, {col}: {pixels[col*30 + 16, row*30 + 15]}")
   try:
-    if COLOR_CODES[pixels[ceil((col + 0.25) * square_size), ceil((row+ 0.25) * square_size)]] == MINE:
+    if COLOR_CODES[pixels[ceil((col + 0.25) * square_size), ceil((row + 0.25) * square_size)]] == MINE:
       # Center of mine square looks unknown, check the upper left area for mine color
       return MINE
     else:
       return COLOR_CODES[pixels[(col + 0.5) * square_size + 1, (row + 0.5) * square_size]]
-  except KeyError: 
-    print("UNKNOWN COLOR HELLLLLPPPPPP")
+  except KeyError as e: 
+    print(f"UNKNOWN COLOR at {row}, {col} HELLLLLPPPPPP", e)
     for x in range(col * square_size, (col + 1) * square_size):
       for y in range(row * square_size, (row + 1) * square_size):
         print(f"{x}, {y}: {pixels[x,y]}")
@@ -106,12 +108,12 @@ def read_field():
   png = canvas.screenshot_as_png
   canvas.screenshot('temp.png')
   image = Image.open(BytesIO(png))
-  print(f"Canvas image size is {image.size}")
   pixels = image.load()
   # Sync field to the latest on screen
   for i in range(0, rows):
     for j in range(0, cols):
-      field[i][j] = read_square(pixels, i, j)
+      if field[i][j] == UNKNOWN:
+        field[i][j] = read_square(pixels, i, j)
   for i in range(0, rows):
     for j in range(0, cols):
       print("%2d" % (field[i][j]), end="")
@@ -155,12 +157,9 @@ print(f"Aha, I'm playing with {rows} rows and {cols} cols")
 field = [ [UNKNOWN] * cols for i in range(rows) ]
 #mark_mine(canvas, 0, 0)
 step(canvas, 0, 0)
-read_field()
-interpret_field()
-#while game isn't finished:
-#  read field
-#  mark or step on everything you can 
-#  if stuck then guess 
-
-time.sleep(40)
-read_field()
+while True:
+  read_field()
+  field_dirty = False
+  interpret_field()
+  if not field_dirty:
+    print("HELP I'M STUCK!!!")
