@@ -7,10 +7,12 @@ from io import BytesIO
 from math import ceil
 import time
 
-# Minesweeper levels
-EASY = [8, 10, 40] # rows, cols, pixel length of single square edge
-MEDIUM = [14, 18, 30]
-HARD = [20, 24, 25]
+MINESWEEPER_LEVELS = {
+  #(height, width): [rows, cols, pixel length of square edge]
+  (360, 400): [8, 10, 40], # EASY
+  (420, 540): [14, 18, 30], # MEDIUM
+  (500, 600): [20, 24, 25], # HARD
+}
 
 # Square values
 UNKNOWN = -1
@@ -31,10 +33,10 @@ COLOR_CODES = {
   (56, 142, 60, 255): 2, # green 2
   (211, 47, 47, 255): 3, # red 3 
   (123, 31, 162, 255): 4, # purple 4
+  (250, 148, 17, 255): 5, # orange 5
 }
 
 def click_square(canvas, row, col, left_click):
-  print(square_size)
   X_OFFSET = -1 * (cols / 2 * square_size) + 10
   Y_OFFSET = -1 * (rows / 2 * square_size) + 10
   action = webdriver.common.action_chains.ActionChains(driver)
@@ -58,6 +60,7 @@ def borders_unknown_square(row, col):
   return False
 
 
+# Precondition: field[row][col] > 0
 def mark_perimeter(row, col):
   #print(f"mark_perimeter for {row}, {col}")
   mine_count = field[row][col]
@@ -103,6 +106,13 @@ def read_square(pixels, row, col):
         print(f"{x}, {y}: {pixels[x,y]}")
 
 
+def print_field():
+  for i in range(0, rows):
+    for j in range(0, cols):
+      print("%2d" % (field[i][j]), end="")
+    print()
+
+
 def read_field():
   time.sleep(1) # Wait for animation to end
   png = canvas.screenshot_as_png
@@ -114,10 +124,7 @@ def read_field():
     for j in range(0, cols):
       if field[i][j] == UNKNOWN:
         field[i][j] = read_square(pixels, i, j)
-  for i in range(0, rows):
-    for j in range(0, cols):
-      print("%2d" % (field[i][j]), end="")
-    print()
+  #print_field()
 
 
 def interpret_field():
@@ -139,13 +146,10 @@ def mark_mine(canvas, row, col):
 
 
 def find_size(height, width):
-  if height == "360" and width == "400":
-    return EASY
-  if height == "420" and width == "540":
-    return MEDIUM 
-  if height == "500" and width == "600":
-    return HARD
-  raise AssertionError(f"Canvas height {height} or width {width} is invalid, cannot continue")
+  try:
+    return MINESWEEPER_LEVELS[(int(height), int(width))]
+  except KeyError: 
+    raise AssertionError(f"Canvas height {height} or width {width} is invalid, cannot continue")
     
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
