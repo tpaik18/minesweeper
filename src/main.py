@@ -129,11 +129,12 @@ def check_combination_logic(field, row, col):
         # Mock up a field with that combination of mines
         hypothetical_field = deepcopy(field)
         for square in comb:
-            hypothetical_field[square[0], square[1]] == MINE
+            print("foo", square)
+            hypothetical_field[square[0], square[1]] = MINE
         for i in range(row_min, row_max):
             for j in range(col_min, col_max):
                 if hypothetical_field[i][j] == UNKNOWN:
-                    hypothetical_field[i][j] == 0
+                    hypothetical_field[i][j] = 0
         # Test that all squares in perimeter are compatible w/that field
         illogical_combo = False
         for i in range(row_min, row_max):
@@ -143,7 +144,7 @@ def check_combination_logic(field, row, col):
                 if field[i][j] >= 0 and not perimeter_makes_sense(
                     hypothetical_field, i, j
                 ):
-                    print(f"illogical configuration for {i}, {j}")
+                    print(f"configuration is illogical for {i}, {j}")
                     illogical_combo = True
         if not illogical_combo:
             valid_combinations.append(comb)
@@ -221,16 +222,16 @@ def print_field():
         print()
 
 
-def board_not_solved():
+def board_solved():
     for i in range(0, rows):
         for j in range(0, cols):
             if field[i][j] == UNKNOWN:
-                return True
-    return False
+                return False
+    return True
 
 
 def read_field():
-    print("reading field")
+    print("\nreading field")
     time.sleep(0.85)  # Wait for animation to end
     png = canvas.screenshot_as_png
     canvas.screenshot("temp.png")  # temporarily for debugging
@@ -253,7 +254,6 @@ def interpret_field():
 def step(canvas, row, col):
     click_square(canvas, row, col, True)
     print(f"Stepped on square at {row}, {col}")
-    field[row][col] = 0
 
 
 def mark_mine(canvas, row, col):
@@ -283,12 +283,15 @@ field = [[UNKNOWN] * cols for i in range(rows)]
 field_dirty = False
 # Start with random guess at 0, 0
 step(canvas, 0, 0)
-while board_not_solved():
+while True:
     field_dirty = False
     read_field()
     interpret_field()
+    if board_solved():
+        print("OMG IT WORKED!!!!!!")
+        sys.exit(0)
     if not field_dirty:
         print("HELP I'M STUCK!!!")
         print_field()
         time.sleep(5)
-        sys.exit()
+        sys.exit(1)
