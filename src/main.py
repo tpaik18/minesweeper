@@ -22,35 +22,6 @@ UNKNOWN = -1
 MINE = -2
 # 0 for blank space and n >= 1 means that's the number showing on the square
 
-COLOR_CODES = {
-    (229, 194, 159, 255): 0,
-    (215, 184, 153, 255): 0,
-    (227, 193, 159, 255): 0,  # non-mine pixel (when checking mine pixel)
-    (236, 209, 183, 255): 0,  # non-mine pixel (when checking mine pixel)
-    (225, 202, 179, 255): 0,  # non-mine pixel (when checking mine pixel)
-    (170, 215, 81, 255): UNKNOWN,
-    (162, 209, 73, 255): UNKNOWN,
-    # (135, 175, 58, 255): -3,  # edge border color
-    (242, 54, 7, 255): MINE,
-    (230, 51, 7, 255): MINE,
-    (25, 118, 210, 255): 1,  # blue 1
-    (26, 118, 210, 255): 1,  # blue 1
-    (27, 119, 209, 255): 1,  # blue 1
-    (26, 119, 210, 255): 1,  # blue 1
-    (27, 119, 210, 255): 1,  # blue 1
-    (31, 120, 208, 255): 1,  # blue 1
-    (28, 119, 209, 255): 1,  # blue 1
-    (31, 120, 209, 255): 1,  # blue 1
-    (56, 142, 60, 255): 2,  # green 2
-    (57, 142, 60, 255): 2,  # green 2
-    (211, 47, 47, 255): 3,  # red 3
-    (211, 48, 48, 255): 3,  # red 3
-    (123, 31, 162, 255): 4,  # purple 4
-    (250, 148, 17, 255): 5,  # orange 5
-    (253, 150, 21, 255): 5,  # orange 5 with bright highlight
-    (252, 149, 18, 255): 5,  # orange 5
-}
-
 
 def identify_square_by_color(pixel):
     COLOR_RANGES = [
@@ -80,9 +51,12 @@ def identify_square_by_color(pixel):
     blue = pixel[2]
     for r in COLOR_RANGES:
         if (
-            red >= r["red"][0] and red <= r["red"][1]
-            and green >= r["green"][0] and green <= r["green"][1]
-            and blue >= r["blue"][0] and blue <= r["blue"][1]
+            red >= r["red"][0]
+            and red <= r["red"][1]
+            and green >= r["green"][0]
+            and green <= r["green"][1]
+            and blue >= r["blue"][0]
+            and blue <= r["blue"][1]
         ):
             return r["type"]
     raise KeyError("Couldn't identify color for ", pixel)
