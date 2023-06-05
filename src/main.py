@@ -6,6 +6,9 @@ from PIL import Image
 from io import BytesIO
 from math import ceil
 import time
+import sys
+import itertools
+from copy import deepcopy
 
 MINESWEEPER_LEVELS = {
     # (height, width): [rows, cols, pixel length of square edge]
@@ -22,20 +25,67 @@ MINE = -2
 COLOR_CODES = {
     (229, 194, 159, 255): 0,
     (215, 184, 153, 255): 0,
+    (227, 193, 159, 255): 0,  # non-mine pixel (when checking mine pixel)
     (236, 209, 183, 255): 0,  # non-mine pixel (when checking mine pixel)
     (225, 202, 179, 255): 0,  # non-mine pixel (when checking mine pixel)
     (170, 215, 81, 255): UNKNOWN,
     (162, 209, 73, 255): UNKNOWN,
-    (135, 175, 58, 255): -3,  # edge border color
+    # (135, 175, 58, 255): -3,  # edge border color
     (242, 54, 7, 255): MINE,
     (230, 51, 7, 255): MINE,
     (25, 118, 210, 255): 1,  # blue 1
+    (26, 118, 210, 255): 1,  # blue 1
+    (27, 119, 209, 255): 1,  # blue 1
+    (26, 119, 210, 255): 1,  # blue 1
+    (27, 119, 210, 255): 1,  # blue 1
+    (31, 120, 208, 255): 1,  # blue 1
+    (28, 119, 209, 255): 1,  # blue 1
+    (31, 120, 209, 255): 1,  # blue 1
     (56, 142, 60, 255): 2,  # green 2
+    (57, 142, 60, 255): 2,  # green 2
     (211, 47, 47, 255): 3,  # red 3
+    (211, 48, 48, 255): 3,  # red 3
     (123, 31, 162, 255): 4,  # purple 4
     (250, 148, 17, 255): 5,  # orange 5
     (253, 150, 21, 255): 5,  # orange 5 with bright highlight
+    (252, 149, 18, 255): 5,  # orange 5
 }
+
+
+def identify_square_by_color(pixel):
+    COLOR_RANGES = [
+        {"red": (215, 229), "green": (184, 194), "blue": (153, 159), "type": 0},
+        {"red": (225, 236), "green": (202, 209), "blue": (179, 183), "type": 0},
+        {"red": (169, 171), "green": (214, 216), "blue": (80, 82), "type": UNKNOWN},
+        {"red": (161, 163), "green": (208, 210), "blue": (72, 74), "type": UNKNOWN},
+        {"red": (230, 240), "green": (51, 54), "blue": (6, 8), "type": MINE},
+        {"red": (25, 31), "green": (117, 121), "blue": (207, 211), "type": 1},  # blue 1
+        {"red": (56, 58), "green": (141, 143), "blue": (59, 61), "type": 2},  # green 2
+        {"red": (210, 212), "green": (46, 49), "blue": (46, 49), "type": 3},  # red 3
+        {
+            "red": (122, 124),
+            "green": (30, 32),
+            "blue": (161, 163),
+            "type": 4,
+        },  # purple 4
+        {
+            "red": (250, 253),
+            "green": (148, 150),
+            "blue": (17, 21),
+            "type": 5,
+        },  # orange 5
+    ]
+    red = pixel[0]
+    green = pixel[1]
+    blue = pixel[2]
+    for r in COLOR_RANGES:
+        if (
+            red >= r["red"][0] and red <= r["red"][1]
+            and green >= r["green"][0] and green <= r["green"][1]
+            and blue >= r["blue"][0] and blue <= r["blue"][1]
+        ):
+            return r["type"]
+    raise KeyError("Couldn't identify color for ", pixel)
 
 
 def click_square(canvas, row, col, left_click):
@@ -52,34 +102,99 @@ def click_square(canvas, row, col, left_click):
     action.perform()
 
 
-def borders_unknown_square(row, col):
-    row_min = row - 1 if row > 0 else 0
-    col_min = col - 1 if col > 0 else 0
-    row_max = row + 2 if row < rows - 1 else row + 1
-    col_max = col + 2 if col < cols - 1 else col + 1
+def count_perimeter(field, row, col, square_type):
+    count = 0
+    row_min = max(0, row - 1)
+    col_min = max(0, col - 1)
+    row_max = min(row + 2, rows)
+    col_max = min(col + 2, cols)
+    for i in range(row_min, row_max):
+        for j in range(col_min, col_max):
+            if i == col and j == row:
+                continue
+            if field[i][j] == square_type:
+                count += 1
+    return count
+
+
+def borders_unknown_square(field, row, col):
+    unknowns = count_perimeter(field, row, col, UNKNOWN)
+    return unknowns > 0
+
+
+def perimeter_makes_sense(hypothetical_field, row, col):
+    mine_count = hypothetical_field[row][col]
+    if mine_count < 0:
+        return True
+    mines_found = count_perimeter(hypothetical_field, row, col, MINE)
+    unknowns_found = count_perimeter(hypothetical_field, row, col, UNKNOWN)
+    # Neither too many nor too few mines in the perimeter for given square
+    return mines_found <= mine_count and unknowns_found + mines_found >= mine_count
+
+
+def check_combination_logic(field, row, col):
+    mine_count = field[row][col]
+    print(f"eliminate permutations for {row}, {col}: ({mine_count})")
+    mines_in_unknowns = mine_count - count_perimeter(field, row, col, MINE)
+    row_min = max(0, row - 1)
+    col_min = max(0, col - 1)
+    row_max = min(row + 2, rows)
+    col_max = min(col + 2, cols)
+    # Array containing i,j coordinates of all unknowns in the perimeter
+    unknown_array = []
     for i in range(row_min, row_max):
         for j in range(col_min, col_max):
             if field[i][j] == UNKNOWN:
-                return True
-    return False
+                unknown_array.append((i, j))
+    print("unknown array ", unknown_array)
+    possible_combinations = itertools.combinations(unknown_array, mines_in_unknowns)
+    valid_combinations = []
+    print("possible combinations ", list(possible_combinations))
+    for comb in list(possible_combinations):
+        print("testing comb ", comb)
+        # Mock up a field with that combination of mines
+        hypothetical_field = deepcopy(field)
+        for square in comb:
+            hypothetical_field[square[0], square[1]] == MINE
+        for i in range(row_min, row_max):
+            for j in range(col_min, col_max):
+                if hypothetical_field[i][j] == UNKNOWN:
+                    hypothetical_field[i][j] == 0
+        # Test that all squares in perimeter are compatible w/that field
+        illogical_combo = False
+        for i in range(row_min, row_max):
+            for j in range(col_min, col_max):
+                if i == row and j == col:
+                    continue
+                if field[i][j] >= 0 and not perimeter_makes_sense(
+                    hypothetical_field, i, j
+                ):
+                    print(f"illogical configuration for {i}, {j}")
+                    illogical_combo = True
+        if not illogical_combo:
+            valid_combinations.append(comb)
+    print("valid combinations: ", valid_combinations)
 
 
 # Precondition: field[row][col] > 0
 def mark_perimeter(row, col):
     # print(f"mark_perimeter for {row}, {col}")
+    global field_dirty
     mine_count = field[row][col]
-    mines_found = 0
-    unknown_found = 0
-    row_min = row - 1 if row > 0 else 0
-    col_min = col - 1 if col > 0 else 0
-    row_max = row + 2 if row < rows - 1 else row + 1
-    col_max = col + 2 if col < cols - 1 else col + 1
-    for i in range(row_min, row_max):
-        for j in range(col_min, col_max):
-            if field[i][j] == MINE:
-                mines_found += 1
-            elif field[i][j] == UNKNOWN:
-                unknown_found += 1
+    mines_found = count_perimeter(field, row, col, MINE)
+    unknowns_found = count_perimeter(field, row, col, UNKNOWN)
+    row_min = max(0, row - 1)
+    col_min = max(0, col - 1)
+    row_max = min(row + 2, rows)
+    col_max = min(col + 2, cols)
+    if mine_count == unknowns_found + mines_found:
+        # All the unknowns are mines, mark them
+        for i in range(row_min, row_max):
+            for j in range(col_min, col_max):
+                if field[i][j] == UNKNOWN:
+                    mark_mine(canvas, i, j)
+                    mines_found += 1
+                    field_dirty = True
     if mines_found == mine_count:
         # All the mines are already marked, simulate chord click
         for i in range(row_min, row_max):
@@ -87,42 +202,48 @@ def mark_perimeter(row, col):
                 if field[i][j] == UNKNOWN:
                     step(canvas, i, j)
                     field_dirty = True
-    if mine_count == unknown_found + mines_found:
-        # All the unknowns are mines, mark them
-        for i in range(row_min, row_max):
-            for j in range(col_min, col_max):
-                if field[i][j] == UNKNOWN:
-                    mark_mine(canvas, i, j)
-                    field_dirty = True
+    if count_perimeter(field, row, col, UNKNOWN) > 0:
+        check_combination_logic(field, row, col)
 
 
 def read_square(pixels, row, col):
     try:
         if (
-            COLOR_CODES[
+            identify_square_by_color(
                 pixels[
                     ceil((col + 0.25) * square_size), ceil((row + 0.25) * square_size)
                 ]
-            ]
+            )
             == MINE
         ):
             # Center of mine square looks unknown, check the upper left area for mine color
             return MINE
-        else:
-            return COLOR_CODES[
-                pixels[(col + 0.5) * square_size + 1, (row + 0.5) * square_size]
-            ]
+    except KeyError:
+        print(f"Couldn't match color while checking mine at {row}, {col}")
+        pass
+    try:
+        return identify_square_by_color(
+            pixels[(col + 0.5) * square_size + 1, (row + 0.5) * square_size]
+        )
     except KeyError as e:
         print(f"UNKNOWN COLOR at {row}, {col} HELLLLLPPPPPP", e)
         for x in range(col * square_size, (col + 1) * square_size):
             for y in range(row * square_size, (row + 1) * square_size):
-                print(f"{x}, {y}: {pixels[x,y]}")
+                pass
+                # print(f"{x}, {y}: {pixels[x,y]}")
 
 
 def print_field():
     for i in range(0, rows):
         for j in range(0, cols):
-            print("%2d" % (field[i][j]), end="")
+            val = field[i][j]
+            if val == UNKNOWN:
+                val = "?"
+            elif val == MINE:
+                val = "M"
+            else:
+                val = str(val)
+            print("%2s" % (val), end="")
         print()
 
 
@@ -135,29 +256,30 @@ def board_not_solved():
 
 
 def read_field():
+    print("reading field")
     time.sleep(0.85)  # Wait for animation to end
     png = canvas.screenshot_as_png
-    canvas.screenshot("temp.png")
+    canvas.screenshot("temp.png")  # temporarily for debugging
     image = Image.open(BytesIO(png))
     pixels = image.load()
     # Sync field to the latest on screen
-    for i in range(0, rows):
-        for j in range(0, cols):
-            if field[i][j] == UNKNOWN:
-                field[i][j] = read_square(pixels, i, j)
-    # print_field()
+    for row in range(0, rows):
+        for col in range(0, cols):
+            if field[row][col] == UNKNOWN:
+                field[row][col] = read_square(pixels, row, col)
 
 
 def interpret_field():
     for row in range(0, rows):
         for col in range(0, cols):
-            if field[row][col] > 0 and borders_unknown_square(row, col):
+            if field[row][col] > 0 and borders_unknown_square(field, row, col):
                 mark_perimeter(row, col)
 
 
 def step(canvas, row, col):
     click_square(canvas, row, col, True)
     print(f"Stepped on square at {row}, {col}")
+    field[row][col] = 0
 
 
 def mark_mine(canvas, row, col):
@@ -184,13 +306,15 @@ canvas = driver.find_element(By.TAG_NAME, "canvas")
 )
 print(f"Aha, I'm playing with {rows} rows and {cols} cols")
 field = [[UNKNOWN] * cols for i in range(rows)]
-# mark_mine(canvas, 0, 0)
+field_dirty = False
+# Start with random guess at 0, 0
 step(canvas, 0, 0)
 while board_not_solved():
-    read_field()
     field_dirty = False
+    read_field()
     interpret_field()
     if not field_dirty:
         print("HELP I'M STUCK!!!")
         print_field()
-        exit
+        time.sleep(5)
+        sys.exit()
