@@ -103,6 +103,9 @@ def perimeter_makes_sense(hypothetical_field, row, col):
     mines_found = count_perimeter(hypothetical_field, row, col, MINE)
     unknowns_found = count_perimeter(hypothetical_field, row, col, UNKNOWN)
     # Neither too many nor too few mines in the perimeter for given square
+    print(
+        f"{row}, {col} perimeter mine_count {mine_count}, mines_found {mines_found}, unknowns_found {unknowns_found}"
+    )
     return mines_found <= mine_count and unknowns_found + mines_found >= mine_count
 
 
@@ -121,20 +124,24 @@ def check_combination_logic(field, row, col):
             if field[i][j] == UNKNOWN:
                 unknown_array.append((i, j))
     print("unknown array ", unknown_array)
-    possible_combinations = itertools.combinations(unknown_array, mines_in_unknowns)
+    possible_combinations = list(
+        itertools.combinations(unknown_array, mines_in_unknowns)
+    )
+    print(len(possible_combinations), " possible combinations ", possible_combinations)
+    if len(possible_combinations) <= 1:
+        return
     valid_combinations = []
-    print("possible combinations ", list(possible_combinations))
-    for comb in list(possible_combinations):
-        print("testing comb ", comb)
+    for comb in possible_combinations:
+        print(comb)
         # Mock up a field with that combination of mines
         hypothetical_field = deepcopy(field)
         for square in comb:
             print("foo", square)
-            hypothetical_field[square[0], square[1]] = MINE
+            hypothetical_field[square[0]][square[1]] = MINE
         for i in range(row_min, row_max):
             for j in range(col_min, col_max):
                 if hypothetical_field[i][j] == UNKNOWN:
-                    hypothetical_field[i][j] = 0
+                    hypothetical_field[i][j] = 0  # Assert 0 for temp computation sake
         # Test that all squares in perimeter are compatible w/that field
         illogical_combo = False
         for i in range(row_min, row_max):
@@ -146,7 +153,11 @@ def check_combination_logic(field, row, col):
                 ):
                     print(f"configuration is illogical for {i}, {j}")
                     illogical_combo = True
-        if not illogical_combo:
+        if illogical_combo:
+            pass
+            # if len(comb) == 1:  # Just one mine, and we know it's illogical
+            #    step(canvas, comb[0][0], comb[0][1])
+        else:
             valid_combinations.append(comb)
     print("valid combinations: ", valid_combinations)
 
