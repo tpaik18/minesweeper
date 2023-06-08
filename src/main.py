@@ -18,10 +18,11 @@ MINESWEEPER_LEVELS = {
 }
 
 # Square values
+# 0 for blank space and n >= 1 means that's the number showing on the square
 UNKNOWN = -1
 MINE = -2
+# For right after I step on square b/c it's def not a mine but haven't read field yet
 UNKNOWN_BUT_NOT_MINE = -3
-# 0 for blank space and n >= 1 means that's the number showing on the square
 
 
 def identify_square_by_color(pixel):
@@ -77,14 +78,22 @@ def click_square(canvas, row, col, left_click):
     action.perform()
 
 
+def row_perimeter(row):
+    row_min = max(0, row - 1)
+    row_max = min(row + 2, rows)
+    return range(row_min, row_max)
+
+
+def col_perimeter(col):
+    col_min = max(0, col - 1)
+    col_max = min(col + 2, cols)
+    return range(col_min, col_max)
+
+
 def count_perimeter(field, row, col, square_type):
     count = 0
-    row_min = max(0, row - 1)
-    col_min = max(0, col - 1)
-    row_max = min(row + 2, rows)
-    col_max = min(col + 2, cols)
-    for i in range(row_min, row_max):
-        for j in range(col_min, col_max):
+    for i in row_perimeter(row):
+        for j in col_perimeter(col):
             if i == row and j == col:
                 continue
             if field[i][j] == square_type:
@@ -112,25 +121,16 @@ def check_combination_logic(field, row, col):
     mine_count = field[row][col]
     print(f"eliminate permutations for {row}, {col}: ({mine_count})")
     mines_in_unknowns = mine_count - count_perimeter(field, row, col, MINE)
-    row_min = max(0, row - 1)
-    col_min = max(0, col - 1)
-    row_max = min(row + 2, rows)
-    col_max = min(col + 2, cols)
     # Array containing i,j coordinates of all unknowns in the perimeter
     unknown_array = []
-    for i in range(row_min, row_max):
-        for j in range(col_min, col_max):
+    for i in row_perimeter(row):
+        for j in col_perimeter(col):
             if field[i][j] == UNKNOWN:
                 unknown_array.append((i, j))
     print("unknown array ", unknown_array)
-    try:
-        possible_combinations = list(
-            itertools.combinations(unknown_array, mines_in_unknowns)
-        )
-    except ValueError:
-        print("Logic crapped out again!!")
-        print_field()
-        sys.exit(1)
+    possible_combinations = list(
+        itertools.combinations(unknown_array, mines_in_unknowns)
+    )
     print(len(possible_combinations), " possible combinations ", possible_combinations)
     if len(possible_combinations) <= 1:
         return
@@ -141,14 +141,14 @@ def check_combination_logic(field, row, col):
         hypothetical_field = deepcopy(field)
         for square in comb:
             hypothetical_field[square[0]][square[1]] = MINE
-        for i in range(row_min, row_max):
-            for j in range(col_min, col_max):
+        for i in row_perimeter(row):
+            for j in col_perimeter(col):
                 if hypothetical_field[i][j] == UNKNOWN:
                     hypothetical_field[i][j] = 0  # Assert 0 for temp computation sake
         # Test that all squares in perimeter are compatible w/that field
         illogical_combo = False
-        for i in range(row_min, row_max):
-            for j in range(col_min, col_max):
+        for i in row_perimeter(row):
+            for j in col_perimeter(col):
                 if i == row and j == col:
                     continue
                 if field[i][j] >= 0 and not perimeter_makes_sense(
@@ -164,7 +164,6 @@ def check_combination_logic(field, row, col):
 
     # Verdict for each unknown (could_be_mine, could_be_not_mine)
     unknown_verdict = [[False, False] for i in range(len(unknown_array))]
-    print(unknown_verdict)
     idx = 0
     for unknown in unknown_array:
         for comb in valid_combinations:
@@ -174,14 +173,17 @@ def check_combination_logic(field, row, col):
             else:
                 unknown_verdict[idx][1] = True
         idx += 1
+    global field_dirty
     for i in range(len(unknown_array)):
         if not unknown_verdict[i][0] and not unknown_verdict[i][1]:
             raise ValueError("Logic contridiction for " + unknown_array[i])
         if not unknown_verdict[i][0]:
             step(canvas, unknown_array[i][0], unknown_array[i][1])
+            field_dirty = True
             print("Logic concluded no mine at " + str(unknown_array[i]))
         if not unknown_verdict[i][1]:
             mark_mine(canvas, unknown_array[i][0], unknown_array[i][1])
+            field_dirty = True
             print("Logic concluded mine at " + str(unknown_array[i]))
 
 
@@ -191,22 +193,18 @@ def mark_perimeter(row, col):
     mine_count = field[row][col]
     mines_found = count_perimeter(field, row, col, MINE)
     unknowns_found = count_perimeter(field, row, col, UNKNOWN)
-    row_min = max(0, row - 1)
-    col_min = max(0, col - 1)
-    row_max = min(row + 2, rows)
-    col_max = min(col + 2, cols)
     if mine_count == unknowns_found + mines_found:
         # All the unknowns are mines, mark them
-        for i in range(row_min, row_max):
-            for j in range(col_min, col_max):
+        for i in row_perimeter(row):
+            for j in col_perimeter(col):
                 if field[i][j] == UNKNOWN:
                     mark_mine(canvas, i, j)
                     mines_found += 1
                     field_dirty = True
     if mines_found == mine_count:
         # All the mines are already marked, simulate chord click
-        for i in range(row_min, row_max):
-            for j in range(col_min, col_max):
+        for i in row_perimeter(row):
+            for j in col_perimeter(col):
                 if field[i][j] == UNKNOWN:
                     step(canvas, i, j)
                     field_dirty = True
