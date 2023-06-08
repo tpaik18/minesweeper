@@ -34,8 +34,8 @@ def identify_square_by_color(pixel):
         {"red": (56, 58), "green": (141, 143), "blue": (59, 61), "type": 2},  # green 2
         {"red": (210, 212), "green": (46, 49), "blue": (46, 49), "type": 3},  # red 3
         {
-            "red": (122, 124),
-            "green": (30, 32),
+            "red": (122, 132),
+            "green": (30, 43),
             "blue": (161, 163),
             "type": 4,
         },  # purple 4
