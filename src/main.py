@@ -84,7 +84,7 @@ def count_perimeter(field, row, col, square_type):
     col_max = min(col + 2, cols)
     for i in range(row_min, row_max):
         for j in range(col_min, col_max):
-            if i == col and j == row:
+            if i == row and j == col:
                 continue
             if field[i][j] == square_type:
                 count += 1
@@ -103,9 +103,6 @@ def perimeter_makes_sense(hypothetical_field, row, col):
     mines_found = count_perimeter(hypothetical_field, row, col, MINE)
     unknowns_found = count_perimeter(hypothetical_field, row, col, UNKNOWN)
     # Neither too many nor too few mines in the perimeter for given square
-    print(
-        f"{row}, {col} perimeter mine_count {mine_count}, mines_found {mines_found}, unknowns_found {unknowns_found}"
-    )
     return mines_found <= mine_count and unknowns_found + mines_found >= mine_count
 
 
@@ -124,9 +121,14 @@ def check_combination_logic(field, row, col):
             if field[i][j] == UNKNOWN:
                 unknown_array.append((i, j))
     print("unknown array ", unknown_array)
-    possible_combinations = list(
-        itertools.combinations(unknown_array, mines_in_unknowns)
-    )
+    try:
+        possible_combinations = list(
+            itertools.combinations(unknown_array, mines_in_unknowns)
+        )
+    except ValueError:
+        print("Logic crapped out again!!")
+        print_field()
+        sys.exit(1)
     print(len(possible_combinations), " possible combinations ", possible_combinations)
     if len(possible_combinations) <= 1:
         return
@@ -136,7 +138,6 @@ def check_combination_logic(field, row, col):
         # Mock up a field with that combination of mines
         hypothetical_field = deepcopy(field)
         for square in comb:
-            print("foo", square)
             hypothetical_field[square[0]][square[1]] = MINE
         for i in range(row_min, row_max):
             for j in range(col_min, col_max):
@@ -164,7 +165,6 @@ def check_combination_logic(field, row, col):
 
 # Precondition: field[row][col] > 0
 def mark_perimeter(row, col):
-    # print(f"mark_perimeter for {row}, {col}")
     global field_dirty
     mine_count = field[row][col]
     mines_found = count_perimeter(field, row, col, MINE)
@@ -173,6 +173,7 @@ def mark_perimeter(row, col):
     col_min = max(0, col - 1)
     row_max = min(row + 2, rows)
     col_max = min(col + 2, cols)
+    print_field()
     if mine_count == unknowns_found + mines_found:
         # All the unknowns are mines, mark them
         for i in range(row_min, row_max):
