@@ -71,6 +71,17 @@ def identify_square_by_color(pixel):
     raise KeyError("Couldn't identify color for ", pixel)
 
 
+def chord_click(canvas, row, col):
+    global web_action
+    X_OFFSET = -1 * (cols / 2 * square_size) + 10
+    Y_OFFSET = -1 * (rows / 2 * square_size) + 10
+    web_action.move_to_element_with_offset(
+        canvas, X_OFFSET + col * square_size, Y_OFFSET + row * square_size
+    )
+    print("CHORDING at ", row, col)
+    web_action.click_and_hold().context_click().release().perform()
+
+
 def click_square(canvas, row, col, left_click):
     global web_action
     X_OFFSET = -1 * (cols / 2 * square_size) + 10
@@ -191,7 +202,7 @@ def check_combination_logic(field, row, col):
     return made_change
 
 
-# Precondition: field[row][col] > 0
+# Precondition: field[row][col] > 0 and at least one square in perimeter is UNKNOWN
 # Return whether or not any square was changed after running this
 def mark_perimeter(row, col):
     made_change = False
@@ -208,11 +219,12 @@ def mark_perimeter(row, col):
                     made_change = True
     if mines_found == mine_count:
         # All the mines are already marked, simulate chord click
-        for i in row_perimeter(row):
-            for j in col_perimeter(col):
-                if field[i][j] == UNKNOWN:
-                    step(canvas, i, j)
-                    made_change = True
+        chord_click(canvas, row, col)
+        # for i in row_perimeter(row):
+        #     for j in col_perimeter(col):
+        #         if field[i][j] == UNKNOWN:
+        #             step(canvas, i, j)
+        made_change = True
     if count_perimeter(field, row, col, UNKNOWN) > 0:
         made_change = made_change or check_combination_logic(field, row, col)
     return made_change
