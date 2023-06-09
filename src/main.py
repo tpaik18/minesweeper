@@ -10,6 +10,8 @@ import sys
 import itertools
 from copy import deepcopy
 
+DEBUG = True
+
 MINESWEEPER_LEVELS = {
     # (height, width): [rows, cols, pixel length of square edge]
     (360, 400): [8, 10, 40],  # EASY
@@ -71,15 +73,9 @@ def identify_square_by_color(pixel):
     raise KeyError("Couldn't identify color for ", pixel)
 
 
-def chord_click(canvas, row, col):
-    global web_action
-    X_OFFSET = -1 * (cols / 2 * square_size) + 10
-    Y_OFFSET = -1 * (rows / 2 * square_size) + 10
-    web_action.move_to_element_with_offset(
-        canvas, X_OFFSET + col * square_size, Y_OFFSET + row * square_size
-    )
-    print("CHORDING at ", row, col)
-    web_action.click_and_hold().context_click().release().perform()
+def printd(*args, **kwargs):
+    if DEBUG:
+        print(*args, **kwargs)
 
 
 def click_square(canvas, row, col, left_click):
@@ -138,7 +134,7 @@ def perimeter_makes_sense(hypothetical_field, row, col):
 # Returns whether a change was made
 def check_combination_logic(field, row, col):
     mine_count = field[row][col]
-    print(f"eliminate permutations for {row}, {col}: ({mine_count})")
+    printd(f"eliminate permutations for {row}, {col}: ({mine_count})")
     mines_in_unknowns = mine_count - count_perimeter(field, row, col, MINE)
     # Array containing i,j coordinates of all unknowns in the perimeter
     unknown_array = []
@@ -173,11 +169,10 @@ def check_combination_logic(field, row, col):
                     logical_combo = False
         if logical_combo:
             valid_combinations.append(comb)
+
     # If there's the same mine in all valid_combinations, then it must be a mine
     # If there's a mine missing in all valid_combinations, it must be safe
-
     made_change = False
-    # Verdict for each unknown (could_be_mine, could_be_not_mine)
     unknown_verdict = [
         {"could_be_mine": False, "could_be_not_mine": False}
         for i in range(len(unknown_array))
@@ -194,11 +189,11 @@ def check_combination_logic(field, row, col):
         if not unknown_verdict[i]["could_be_mine"]:
             step(canvas, unknown_array[i][0], unknown_array[i][1])
             made_change = True
-            print("Logic concluded no mine at " + str(unknown_array[i]))
+            printd("Logic concluded no mine at " + str(unknown_array[i]))
         if not unknown_verdict[i]["could_be_not_mine"]:
             mark_mine(canvas, unknown_array[i][0], unknown_array[i][1])
             made_change = True
-            print("Logic concluded mine at " + str(unknown_array[i]))
+            printd("Logic concluded mine at " + str(unknown_array[i]))
     return made_change
 
 
@@ -219,12 +214,11 @@ def mark_perimeter(row, col):
                     made_change = True
     if mines_found == mine_count:
         # All the mines are already marked, simulate chord click
-        chord_click(canvas, row, col)
-        # for i in row_perimeter(row):
-        #     for j in col_perimeter(col):
-        #         if field[i][j] == UNKNOWN:
-        #             step(canvas, i, j)
-        made_change = True
+        for i in row_perimeter(row):
+            for j in col_perimeter(col):
+                if field[i][j] == UNKNOWN:
+                    step(canvas, i, j)
+                    made_change = True
     if count_perimeter(field, row, col, UNKNOWN) > 0:
         made_change = made_change or check_combination_logic(field, row, col)
     return made_change
@@ -243,18 +237,14 @@ def read_square(pixels, row, col):
             # Center of mine square looks unknown, check the upper left area for mine color
             return MINE
     except KeyError:
-        print(f"Couldn't match color while checking mine at {row}, {col}")
+        printd(f"Couldn't match color while checking mine at {row}, {col}")
         pass
     try:
         return identify_square_by_color(
             pixels[(col + 0.5) * square_size + 1, (row + 0.5) * square_size]
         )
     except KeyError as e:
-        print(f"UNKNOWN COLOR at {row}, {col} HELLLLLPPPPPP", e)
-        for x in range(col * square_size, (col + 1) * square_size):
-            for y in range(row * square_size, (row + 1) * square_size):
-                pass
-                # print(f"{x}, {y}: {pixels[x,y]}")
+        printd(f"UNKNOWN COLOR at {row}, {col} HELLLLLPPPPPP", e)
 
 
 def print_field():
@@ -267,8 +257,8 @@ def print_field():
                 val = "M"
             else:
                 val = str(val)
-            print("%2s" % (val), end="")
-        print()
+            printd("%2s" % (val), end="")
+        printd()
 
 
 def board_solved():
@@ -280,10 +270,11 @@ def board_solved():
 
 
 def read_field():
-    print("\nreading field")
+    printd("\nreading field")
     time.sleep(0.85)  # Wait for animation to end
     png = canvas.screenshot_as_png
-    canvas.screenshot("temp.png")  # temporarily for debugging
+    if DEBUG:
+        canvas.screenshot("temp.png")  # temporarily for debugging
     image = Image.open(BytesIO(png))
     pixels = image.load()
     # Sync field to the latest on screen
@@ -291,7 +282,6 @@ def read_field():
         for col in range(0, cols):
             if field[row][col] in (UNKNOWN, UNKNOWN_BUT_NOT_MINE):
                 field[row][col] = read_square(pixels, row, col)
-    print_field()
 
 
 # Returns true if a change was made to field, otherwise false
@@ -304,23 +294,21 @@ def interpret_field():
                 if field[row][col] > 0 and borders_unknown_square(field, row, col):
                     if mark_perimeter(row, col):
                         made_change = True
-                        print(f"{row}, {col} made change in interpret_field")
+                        printd(f"{row}, {col} made change in interpret_field")
                         field_dirty = True
         if not made_change:
-            print("no more changes")
-            print_field()
             break
 
 
 def step(canvas, row, col):
     click_square(canvas, row, col, True)
-    print(f"Stepped on square at {row}, {col}")
+    printd(f"Stepped on square at {row}, {col}")
     field[row][col] = UNKNOWN_BUT_NOT_MINE
 
 
 def mark_mine(canvas, row, col):
     click_square(canvas, row, col, False)
-    print(f"Marked mine at {row}, {col}")
+    printd(f"Marked mine at {row}, {col}")
     field[row][col] = MINE
 
 
@@ -341,7 +329,7 @@ web_action = webdriver.common.action_chains.ActionChains(driver)
 [rows, cols, square_size] = find_size(
     canvas.get_attribute("height"), canvas.get_attribute("width")
 )
-print(f"Aha, I'm playing with {rows} rows and {cols} cols")
+printd(f"Aha, I'm playing with {rows} rows and {cols} cols")
 field = [[UNKNOWN] * cols for i in range(rows)]
 # Start with random guess at 0, 0
 step(canvas, 0, 0)
@@ -350,11 +338,11 @@ while True:
     read_field()
     interpret_field()
     if board_solved():
-        print("OMG IT WORKED!!!!!!")
+        printd("OMG IT WORKED!!!!!!")
         time.sleep(5)
         sys.exit(0)
     if not field_dirty:
-        print("HELP I'M STUCK!!!")
+        printd("HELP I'M STUCK!!!")
         print_field()
         time.sleep(5)
         sys.exit(1)
