@@ -9,7 +9,7 @@ import time
 import sys
 import itertools
 
-DEBUG = True
+DEBUG = False
 
 MINESWEEPER_LEVELS = {
     # (height, width): [rows, cols, pixel length of square edge]
@@ -274,7 +274,7 @@ def read_field():
         canvas.screenshot("temp.png")  # temporarily for debugging
     image = Image.open(BytesIO(png))
     pixels = image.load()
-    time.sleep(0.1)
+    time.sleep(0.15)
     png2 = canvas.screenshot_as_png
     if DEBUG:
         canvas.screenshot("temp2.png")  # temporarily for debugging
