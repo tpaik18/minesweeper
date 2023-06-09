@@ -8,7 +8,6 @@ from math import ceil
 import time
 import sys
 import itertools
-from copy import deepcopy
 
 DEBUG = True
 
@@ -134,7 +133,7 @@ def perimeter_makes_sense(hypothetical_field, row, col):
 # Returns whether a change was made
 def check_combination_logic(field, row, col):
     mine_count = field[row][col]
-    printd(f"eliminate permutations for {row}, {col}: ({mine_count})")
+    printd(f"check valid combinations for {row}, {col}: ({mine_count})")
     mines_in_unknowns = mine_count - count_perimeter(field, row, col, MINE)
     # Array containing i,j coordinates of all unknowns in the perimeter
     unknown_array = []
@@ -150,7 +149,7 @@ def check_combination_logic(field, row, col):
     valid_combinations = []
     for comb in possible_combinations:
         # Mock up a field with that combination of mines
-        hypothetical_field = deepcopy(field)
+        hypothetical_field = [row[:] for row in field]
         for square in comb:
             hypothetical_field[square[0]][square[1]] = MINE
         for i in row_perimeter(row):
@@ -239,12 +238,9 @@ def read_square(pixels, row, col):
     except KeyError:
         printd(f"Couldn't match color while checking mine at {row}, {col}")
         pass
-    try:
-        return identify_square_by_color(
-            pixels[(col + 0.5) * square_size + 1, (row + 0.5) * square_size]
-        )
-    except KeyError as e:
-        printd(f"UNKNOWN COLOR at {row}, {col} HELLLLLPPPPPP", e)
+    return identify_square_by_color(
+        pixels[(col + 0.5) * square_size + 1, (row + 0.5) * square_size]
+    )
 
 
 def print_field():
@@ -271,17 +267,29 @@ def board_solved():
 
 def read_field():
     printd("\nreading field")
-    time.sleep(0.85)  # Wait for animation to end
+    time.sleep(0.5)
+    # time.sleep(0.85)  # Wait for animation to end
     png = canvas.screenshot_as_png
     if DEBUG:
         canvas.screenshot("temp.png")  # temporarily for debugging
     image = Image.open(BytesIO(png))
     pixels = image.load()
+    time.sleep(0.1)
+    png2 = canvas.screenshot_as_png
+    if DEBUG:
+        canvas.screenshot("temp2.png")  # temporarily for debugging
+    image2 = Image.open(BytesIO(png2))
+    pixels2 = image2.load()
     # Sync field to the latest on screen
     for row in range(0, rows):
         for col in range(0, cols):
             if field[row][col] in (UNKNOWN, UNKNOWN_BUT_NOT_MINE):
-                field[row][col] = read_square(pixels, row, col)
+                try:
+                    printd(f"Reading from image for {row}, {col}")
+                    field[row][col] = read_square(pixels, row, col)
+                except KeyError:
+                    printd(f"Reading from image2 for {row}, {col}")
+                    field[row][col] = read_square(pixels2, row, col)
 
 
 # Returns true if a change was made to field, otherwise false
