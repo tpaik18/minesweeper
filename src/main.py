@@ -29,7 +29,7 @@ def identify_square_by_color(pixel):
     COLOR_RANGES = [
         {"red": (215, 229), "green": (184, 194), "blue": (153, 159), "type": 0},
         {"red": (225, 236), "green": (202, 209), "blue": (179, 183), "type": 0},
-        {"red": (169, 171), "green": (214, 216), "blue": (80, 82), "type": UNKNOWN},
+        {"red": (169, 171), "green": (213, 216), "blue": (80, 82), "type": UNKNOWN},
         {"red": (161, 163), "green": (208, 210), "blue": (72, 74), "type": UNKNOWN},
         {"red": (230, 240), "green": (51, 54), "blue": (6, 8), "type": MINE},
         {"red": (25, 31), "green": (117, 121), "blue": (207, 211), "type": 1},  # blue 1
@@ -47,6 +47,13 @@ def identify_square_by_color(pixel):
             "blue": (17, 21),
             "type": 5,
         },  # orange 5
+        {
+            "red": (108, 110),
+            "green": (170, 172),
+            "blue": (162, 164),
+            "type": 6,
+            # cyan 6
+        },
     ]
     red = pixel[0]
     green = pixel[1]
@@ -65,17 +72,17 @@ def identify_square_by_color(pixel):
 
 
 def click_square(canvas, row, col, left_click):
+    global web_action
     X_OFFSET = -1 * (cols / 2 * square_size) + 10
     Y_OFFSET = -1 * (rows / 2 * square_size) + 10
-    action = webdriver.common.action_chains.ActionChains(driver)
-    action.move_to_element_with_offset(
+    web_action.move_to_element_with_offset(
         canvas, X_OFFSET + col * square_size, Y_OFFSET + row * square_size
     )
     if left_click:
-        action.click()
+        web_action.click()
     else:
-        action.context_click()
-    action.perform()
+        web_action.context_click()
+    web_action.perform()
 
 
 def row_perimeter(row):
@@ -117,6 +124,7 @@ def perimeter_makes_sense(hypothetical_field, row, col):
 
 
 # Precondition: There is at least one unknown in the perimeter of row, col
+# Returns whether a change was made
 def check_combination_logic(field, row, col):
     mine_count = field[row][col]
     print(f"eliminate permutations for {row}, {col}: ({mine_count})")
@@ -131,10 +139,9 @@ def check_combination_logic(field, row, col):
         itertools.combinations(unknown_array, mines_in_unknowns)
     )
     if len(possible_combinations) <= 1:
-        return
+        return False
     valid_combinations = []
     for comb in possible_combinations:
-        print(comb)
         # Mock up a field with that combination of mines
         hypothetical_field = deepcopy(field)
         for square in comb:
@@ -155,10 +162,10 @@ def check_combination_logic(field, row, col):
                     logical_combo = False
         if logical_combo:
             valid_combinations.append(comb)
-    print("valid combinations: ", valid_combinations)
     # If there's the same mine in all valid_combinations, then it must be a mine
     # If there's a mine missing in all valid_combinations, it must be safe
 
+    made_change = False
     # Verdict for each unknown (could_be_mine, could_be_not_mine)
     unknown_verdict = [
         {"could_be_mine": False, "could_be_not_mine": False}
@@ -172,47 +179,43 @@ def check_combination_logic(field, row, col):
             else:
                 unknown_verdict[idx]["could_be_not_mine"] = True
         idx += 1
-    global field_dirty
     for i in range(len(unknown_array)):
         if not unknown_verdict[i]["could_be_mine"]:
             step(canvas, unknown_array[i][0], unknown_array[i][1])
-            field_dirty = True
+            made_change = True
             print("Logic concluded no mine at " + str(unknown_array[i]))
         if not unknown_verdict[i]["could_be_not_mine"]:
             mark_mine(canvas, unknown_array[i][0], unknown_array[i][1])
-            field_dirty = True
+            made_change = True
             print("Logic concluded mine at " + str(unknown_array[i]))
+    return made_change
 
 
 # Precondition: field[row][col] > 0
+# Return whether or not any square was changed after running this
 def mark_perimeter(row, col):
-    global field_dirty
+    made_change = False
     mine_count = field[row][col]
-    while True:
-        changed_something = False
-        mines_found = count_perimeter(field, row, col, MINE)
-        unknowns_found = count_perimeter(field, row, col, UNKNOWN)
-        if mine_count == unknowns_found + mines_found:
-            # All the unknowns are mines, mark them
-            for i in row_perimeter(row):
-                for j in col_perimeter(col):
-                    if field[i][j] == UNKNOWN:
-                        mark_mine(canvas, i, j)
-                        mines_found += 1
-                        changed_something = True
-        if mines_found == mine_count:
-            # All the mines are already marked, simulate chord click
-            for i in row_perimeter(row):
-                for j in col_perimeter(col):
-                    if field[i][j] == UNKNOWN:
-                        step(canvas, i, j)
-                        changed_something = True
-        if changed_something:
-            field_dirty = True
-        else:
-            break
+    mines_found = count_perimeter(field, row, col, MINE)
+    unknowns_found = count_perimeter(field, row, col, UNKNOWN)
+    if mine_count == unknowns_found + mines_found:
+        # All the unknowns are mines, mark them
+        for i in row_perimeter(row):
+            for j in col_perimeter(col):
+                if field[i][j] == UNKNOWN:
+                    mark_mine(canvas, i, j)
+                    mines_found += 1
+                    made_change = True
+    if mines_found == mine_count:
+        # All the mines are already marked, simulate chord click
+        for i in row_perimeter(row):
+            for j in col_perimeter(col):
+                if field[i][j] == UNKNOWN:
+                    step(canvas, i, j)
+                    made_change = True
     if count_perimeter(field, row, col, UNKNOWN) > 0:
-        check_combination_logic(field, row, col)
+        made_change = made_change or check_combination_logic(field, row, col)
+    return made_change
 
 
 def read_square(pixels, row, col):
@@ -276,13 +279,25 @@ def read_field():
         for col in range(0, cols):
             if field[row][col] in (UNKNOWN, UNKNOWN_BUT_NOT_MINE):
                 field[row][col] = read_square(pixels, row, col)
+    print_field()
 
 
+# Returns true if a change was made to field, otherwise false
 def interpret_field():
-    for row in range(0, rows):
-        for col in range(0, cols):
-            if field[row][col] > 0 and borders_unknown_square(field, row, col):
-                mark_perimeter(row, col)
+    global field_dirty
+    while True:
+        made_change = False
+        for row in range(0, rows):
+            for col in range(0, cols):
+                if field[row][col] > 0 and borders_unknown_square(field, row, col):
+                    if mark_perimeter(row, col):
+                        made_change = True
+                        print(f"{row}, {col} made change in interpret_field")
+                        field_dirty = True
+        if not made_change:
+            print("no more changes")
+            print_field()
+            break
 
 
 def step(canvas, row, col):
@@ -310,12 +325,12 @@ driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 driver.get("https://www.google.com/search?q=minesweeper")
 time.sleep(5)  # Pause so I can manually hit Play and create board
 canvas = driver.find_element(By.TAG_NAME, "canvas")
+web_action = webdriver.common.action_chains.ActionChains(driver)
 [rows, cols, square_size] = find_size(
     canvas.get_attribute("height"), canvas.get_attribute("width")
 )
 print(f"Aha, I'm playing with {rows} rows and {cols} cols")
 field = [[UNKNOWN] * cols for i in range(rows)]
-field_dirty = False
 # Start with random guess at 0, 0
 step(canvas, 0, 0)
 while True:
@@ -324,6 +339,7 @@ while True:
     interpret_field()
     if board_solved():
         print("OMG IT WORKED!!!!!!")
+        time.sleep(5)
         sys.exit(0)
     if not field_dirty:
         print("HELP I'M STUCK!!!")
