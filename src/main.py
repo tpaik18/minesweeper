@@ -85,10 +85,9 @@ def click_square(canvas, row, col, left_click):
         canvas, X_OFFSET + col * square_size, Y_OFFSET + row * square_size
     )
     if left_click:
-        web_action.click()
+        web_action.click().perform()
     else:
-        web_action.context_click()
-    web_action.perform()
+        web_action.context_click().perform()
 
 
 def row_perimeter(row):
@@ -144,7 +143,7 @@ def check_combination_logic(field, row, col):
     possible_combinations = list(
         itertools.combinations(unknown_array, mines_in_unknowns)
     )
-    if len(possible_combinations) <= 1:
+    if len(possible_combinations) <= 1:  # For some reason, 1 is a degenerate empty list
         return False
     valid_combinations = []
     for comb in possible_combinations:
@@ -170,20 +169,20 @@ def check_combination_logic(field, row, col):
             valid_combinations.append(comb)
 
     # If there's the same mine in all valid_combinations, then it must be a mine
-    # If there's a mine missing in all valid_combinations, it must be safe
+    # If there's a potential mine missing in all valid_combinations, it must be safe
     made_change = False
     unknown_verdict = [
         {"could_be_mine": False, "could_be_not_mine": False}
         for i in range(len(unknown_array))
     ]
-    idx = 0
-    for unknown in unknown_array:
+    # Figure out which unknowns are conclusively mine or not mine
+    for i in range(len(unknown_array)):
         for comb in valid_combinations:
-            if unknown in comb:
-                unknown_verdict[idx]["could_be_mine"] = True
+            if unknown_array[i] in comb:
+                unknown_verdict[i]["could_be_mine"] = True
             else:
-                unknown_verdict[idx]["could_be_not_mine"] = True
-        idx += 1
+                unknown_verdict[i]["could_be_not_mine"] = True
+    # Act on the verdicts to step or mark mine
     for i in range(len(unknown_array)):
         if not unknown_verdict[i]["could_be_mine"]:
             step(canvas, unknown_array[i][0], unknown_array[i][1])
@@ -267,17 +266,16 @@ def board_solved():
 
 def read_field():
     printd("\nreading field")
-    time.sleep(0.5)
-    # time.sleep(0.85)  # Wait for animation to end
+    time.sleep(0.5)  # Wait for animation to end
     png = canvas.screenshot_as_png
     if DEBUG:
-        canvas.screenshot("temp.png")  # temporarily for debugging
+        canvas.screenshot("temp.png")
     image = Image.open(BytesIO(png))
     pixels = image.load()
     time.sleep(0.15)
     png2 = canvas.screenshot_as_png
     if DEBUG:
-        canvas.screenshot("temp2.png")  # temporarily for debugging
+        canvas.screenshot("temp2.png")
     image2 = Image.open(BytesIO(png2))
     pixels2 = image2.load()
     # Sync field to the latest on screen
@@ -294,7 +292,7 @@ def read_field():
 
 # Returns true if a change was made to field, otherwise false
 def interpret_field():
-    global field_dirty
+    field_dirty = False
     while True:
         made_change = False
         for row in range(0, rows):
@@ -306,6 +304,7 @@ def interpret_field():
                         field_dirty = True
         if not made_change:
             break
+    return field_dirty
 
 
 def step(canvas, row, col):
@@ -342,9 +341,8 @@ field = [[UNKNOWN] * cols for i in range(rows)]
 # Start with random guess at 0, 0
 step(canvas, 0, 0)
 while True:
-    field_dirty = False
     read_field()
-    interpret_field()
+    field_dirty = interpret_field()
     if board_solved():
         printd("OMG IT WORKED!!!!!!")
         time.sleep(5)
