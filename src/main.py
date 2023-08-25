@@ -9,7 +9,7 @@ import time
 import sys
 import itertools
 
-DEBUG = False
+DEBUG = True
 
 MINESWEEPER_LEVELS = {
     # (height, width): [rows, cols, pixel length of square edge]
@@ -28,45 +28,29 @@ UNKNOWN_BUT_NOT_MINE = -3
 
 def identify_square_by_color(pixel):
     COLOR_RANGES = [
-        {"red": (215, 229), "green": (184, 194), "blue": (153, 159), "type": 0},
-        {"red": (225, 236), "green": (202, 209), "blue": (179, 183), "type": 0},
-        {"red": (169, 171), "green": (213, 216), "blue": (80, 82), "type": UNKNOWN},
-        {"red": (161, 163), "green": (208, 210), "blue": (72, 74), "type": UNKNOWN},
-        {"red": (230, 240), "green": (51, 54), "blue": (6, 8), "type": MINE},
-        {"red": (25, 31), "green": (117, 121), "blue": (207, 211), "type": 1},  # blue 1
-        {"red": (56, 58), "green": (141, 143), "blue": (59, 61), "type": 2},  # green 2
-        {"red": (210, 212), "green": (46, 49), "blue": (46, 49), "type": 3},  # red 3
-        {
-            "red": (122, 132),
-            "green": (30, 43),
-            "blue": (161, 163),
-            "type": 4,
-        },  # purple 4
-        {
-            "red": (250, 253),
-            "green": (148, 150),
-            "blue": (17, 21),
-            "type": 5,
-        },  # orange 5
-        {
-            "red": (108, 110),
-            "green": (170, 172),
-            "blue": (162, 164),
-            "type": 6,
-            # cyan 6
-        },
+        {"R": (215, 229), "G": (184, 194), "B": (153, 159), "type": 0},
+        {"R": (225, 236), "G": (202, 209), "B": (179, 183), "type": 0},
+        {"R": (169, 171), "G": (213, 216), "B": (80, 82), "type": UNKNOWN},
+        {"R": (161, 163), "G": (208, 210), "B": (72, 74), "type": UNKNOWN},
+        {"R": (230, 240), "G": (51, 54), "B": (6, 8), "type": MINE},
+        {"R": (25, 31), "G": (117, 121), "B": (207, 211), "type": 1},  # blue 1
+        {"R": (56, 58), "G": (141, 143), "B": (59, 61), "type": 2},  # green 2
+        {"R": (210, 212), "G": (46, 51), "B": (46, 50), "type": 3},  # red 3
+        {"R": (122, 132), "G": (30, 43), "B": (161, 163), "type": 4},  # purple 4
+        {"R": (250, 253), "G": (148, 150), "B": (17, 21), "type": 5},  # orange 5
+        {"R": (108, 110), "G": (170, 172), "B": (162, 164), "type": 6},  # cyan 6
     ]
     red = pixel[0]
     green = pixel[1]
     blue = pixel[2]
     for r in COLOR_RANGES:
         if (
-            red >= r["red"][0]
-            and red <= r["red"][1]
-            and green >= r["green"][0]
-            and green <= r["green"][1]
-            and blue >= r["blue"][0]
-            and blue <= r["blue"][1]
+            red >= r["R"][0]
+            and red <= r["R"][1]
+            and green >= r["G"][0]
+            and green <= r["G"][1]
+            and blue >= r["B"][0]
+            and blue <= r["B"][1]
         ):
             return r["type"]
     raise KeyError("Couldn't identify color for ", pixel)
