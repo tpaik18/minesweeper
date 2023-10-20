@@ -31,6 +31,7 @@ enum OrderOfOperations {
  * Represents one specific ordering of cards, specific set of operators, and a
  * fixed order of operation. It may or may not resolve to 24.
  * Perhaps should be called "SolutionAttempt".
+ * Eliminating this class improves performance by ~8%.
  */
 class Solution {
     int[] operands;
@@ -93,7 +94,7 @@ class Solution {
 public class TwentyFour {
 
     static ArrayList<char[]> operatorCombos = new ArrayList<char[]>();
-
+    // 4^3 possible combinations of operators in the expression
     static {
         char[] operators = { '+', '-', '*', '/' };
         for (char firstOperator : operators) {
@@ -108,6 +109,7 @@ public class TwentyFour {
 
     private static ArrayList<int[]> getOperandCombos(int[] cards) {
         ArrayList<int[]> operandCombos = new ArrayList<int[]>();
+        // 4! possible orderings of the cards
         findPermutation(cards, 4, operandCombos);
         return operandCombos;
     }
@@ -209,7 +211,7 @@ public class TwentyFour {
                             continue;
                         }
                         int[] hand = new int[] { a, b, c, d };
-                        // make sure it's unique even when sorted
+                        // sort to make sure the hand is unique
                         Arrays.sort(hand);
                         // hash into a single int to speed up HashSet dupe detection
                         int handNotation = hand[0] * 1000000 + hand[1] * 10000 + hand[2] * 100 + hand[3];
@@ -240,8 +242,8 @@ public class TwentyFour {
     }
 
     public static void main(String[] args) {
-        interactiveTwentyFour();
-        // computePercentHandsSolvable();
+        // interactiveTwentyFour();
+        computePercentHandsSolvable();
     }
 
 }
