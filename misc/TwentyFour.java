@@ -166,6 +166,9 @@ public class TwentyFour {
             int card;
             String input = scanner.next().toUpperCase();
             switch (input) {
+                case "A":
+                    card = 1;
+                    break;
                 case "J":
                     card = 11;
                     break;
@@ -242,8 +245,12 @@ public class TwentyFour {
     }
 
     public static void main(String[] args) {
-        // interactiveTwentyFour();
-        computePercentHandsSolvable();
+        if (args.length > 0 && args[0].equals("--test")) {
+            computePercentHandsSolvable();
+        } else {
+            interactiveTwentyFour();
+
+        }
     }
 
 }
