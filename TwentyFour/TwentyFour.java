@@ -50,7 +50,7 @@ public class TwentyFour {
         }
     }
 
-    private static String getSolution(int[] hand) {
+    private static Solution getSolution(int[] hand) {
         ArrayList<int[]> operandCombos = getOperandCombos(hand);
         for (int[] operands : operandCombos) {
             for (char[] operators : operatorCombos) {
@@ -59,7 +59,7 @@ public class TwentyFour {
                     double result = s.compute();
                     if (result >= 23.9999 && result <= 24.0001) {
                         // equals 24 due to floating point precision loss
-                        return s.stringify();
+                        return s;
                     }
                 }
             }
@@ -99,9 +99,9 @@ public class TwentyFour {
             cards[i] = card;
         }
         scanner.close();
-        String solution = getSolution(cards);
+        Solution solution = getSolution(cards);
         if (solution != null) {
-            System.out.println("Solution: " + solution);
+            System.out.println("Solution: " + solution.stringify());
         } else {
             System.out.println("NO SOLUTION.");
         }
@@ -147,7 +147,7 @@ public class TwentyFour {
             hand[1] = Math.floorDiv(handNotation % 1000000, 10000) % 13 + 1;
             hand[2] = Math.floorDiv(handNotation % 10000, 100) % 13 + 1;
             hand[3] = handNotation % 100 % 13 + 1;
-            String solution = getSolution(hand);
+            Solution solution = getSolution(hand);
             if (solution != null) {
                 numSolvable++;
             }
