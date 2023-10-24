@@ -5,92 +5,6 @@
  */
 import java.util.*;
 
-/**
- * All possible order of operations for an arithmetic expression
- * with four operands and three operators
- */
-enum OrderOfOperations {
-    _123("((%s %s %s) %s %s) %s %s"),
-    _132("(%s %s %s) %s (%s %s %s)"),
-    _231("%s %s ((%s %s %s) %s %s)"),
-    _321("%s %s (%s %s (%s %s %s))");
-    // Skip _312 and _213 which don't compute to different result
-
-    private final String printPattern;
-
-    OrderOfOperations(String printPattern) {
-        this.printPattern = printPattern;
-    }
-
-    public final String printPattern() {
-        return printPattern;
-    }
-}
-
-/**
- * Represents one specific ordering of cards, specific set of operators, and a
- * fixed order of operation. It may or may not resolve to 24.
- * Perhaps should be called "SolutionAttempt".
- * Eliminating this class improves performance by ~8%.
- */
-class Solution {
-    int[] operands;
-    char[] operators;
-    OrderOfOperations orderOfOperations;
-
-    Solution(int[] operands, char[] operators, OrderOfOperations orderOfOperations) {
-        this.operands = operands;
-        this.operators = operators;
-        this.orderOfOperations = orderOfOperations;
-    }
-
-    double simpleCompute(double a, double b, char operator) {
-        switch (operator) {
-            case '+':
-                return a + b;
-            case '-':
-                return a - b;
-            case '*':
-                return a * b;
-            case '/':
-                return a / b;
-            default: // shouldn't happen
-                throw new IllegalArgumentException("Unrecognized operator: " + operator);
-        }
-    }
-
-    double compute() {
-        switch (orderOfOperations) {
-            case _123:
-                return simpleCompute(
-                        simpleCompute(simpleCompute(operands[0], operands[1], operators[0]), operands[2], operators[1]),
-                        operands[3], operators[2]);
-            case _132:
-                return simpleCompute(
-                        simpleCompute(operands[0], operands[1], operators[0]),
-                        simpleCompute(operands[2], operands[3], operators[2]),
-                        operators[1]);
-            case _231:
-                return simpleCompute(operands[0],
-                        simpleCompute(simpleCompute(operands[1], operands[2], operators[1]),
-                                operands[3], operators[2]),
-                        operators[0]);
-            case _321:
-                return simpleCompute(operands[0],
-                        simpleCompute(operands[1], simpleCompute(operands[2], operands[3],
-                                operators[2]), operators[1]),
-                        operators[0]);
-            default: // shouldn't happen
-                throw new IllegalArgumentException("Unrecognized orderOfOperations: " + orderOfOperations);
-        }
-    }
-
-    String stringify() {
-        return String.format(orderOfOperations.printPattern(), operands[0], operators[0], operands[1], operators[1],
-                operands[2], operators[2], operands[3]);
-    }
-}
-
 public class TwentyFour {
 
     static ArrayList<char[]> operatorCombos = new ArrayList<char[]>();
@@ -241,7 +155,7 @@ public class TwentyFour {
         long endTime = System.currentTimeMillis();
         System.out.printf("%d solvable hands out of %d = %.3f%%\n", numSolvable, numHands,
                 numSolvable * 100.0 / numHands);
-        System.out.printf("Ran in %.1f seconds", (endTime - startTime) / 1000.0);
+        System.out.printf("Ran in %.2f seconds", (endTime - startTime) / 1000.0);
     }
 
     public static void main(String[] args) {
