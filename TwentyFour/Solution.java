@@ -15,7 +15,7 @@ public class Solution {
         this.orderOfOperations = orderOfOperations;
     }
 
-    double simpleCompute(double a, double b, char operator) {
+    private double simpleCompute(double a, double b, char operator) {
         switch (operator) {
             case '+':
                 return a + b;

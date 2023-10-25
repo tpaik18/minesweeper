@@ -68,10 +68,10 @@ public class TwentyFour {
     }
 
     /**
-     * Read four numbers in from stdin (accept j, q, k for 11, 12, 13)
+     * Read four numbers in from stdin (accept a, j, q, k for 1, 11, 12, 13)
      * and display the solution if it exists, otherwise display "NO SOLUTION"
      */
-    public static void interactiveTwentyFour() {
+    public static void interactiveTwentyFour(boolean hideSolution) {
         Scanner scanner = new Scanner(System.in);
         System.out.print("Enter four numbers: ");
         scanner.useDelimiter("[\s\\W]+"); // comma or whitespace or both
@@ -101,7 +101,11 @@ public class TwentyFour {
         scanner.close();
         Solution solution = getSolution(cards);
         if (solution != null) {
-            System.out.println("Solution: " + solution.stringify());
+            if (hideSolution) {
+                System.out.println("Solution exists.");
+            } else {
+                System.out.println("Solution: " + solution.stringify());
+            }
         } else {
             System.out.println("NO SOLUTION.");
         }
@@ -142,13 +146,13 @@ public class TwentyFour {
         System.out.printf("Testing %d possibilities...\n", numHands);
         long startTime = System.currentTimeMillis();
         for (Integer handNotation : allPossibleHands) {
+            // unpack the hashed int into four ints
             int[] hand = new int[4];
             hand[0] = Math.floorDiv(handNotation, 1000000) % 13 + 1;
             hand[1] = Math.floorDiv(handNotation % 1000000, 10000) % 13 + 1;
             hand[2] = Math.floorDiv(handNotation % 10000, 100) % 13 + 1;
             hand[3] = handNotation % 100 % 13 + 1;
-            Solution solution = getSolution(hand);
-            if (solution != null) {
+            if (getSolution(hand) != null) {
                 numSolvable++;
             }
         }
@@ -162,8 +166,8 @@ public class TwentyFour {
         if (args.length > 0 && args[0].equals("--test")) {
             computePercentHandsSolvable();
         } else {
-            interactiveTwentyFour();
-
+            boolean hideSolution = args.length > 0 && args[0].equals("--hide");
+            interactiveTwentyFour(hideSolution);
         }
     }
 
