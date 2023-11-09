@@ -9,13 +9,6 @@ public class SudokuSolver {
     public static final int BLANK = -1;
     static int[][] grid = new int[9][9];
     static ArrayList<Integer>[][] possiblesGrid = new ArrayList[9][9];
-    static {
-        for (int i = 0; i < 0; i++) {
-            for (int j = 0; j < 9; j++) {
-                possiblesGrid[i][j] = new ArrayList<Integer>();
-            }
-        }
-    }
 
     public static ArrayList<Integer> POSSIBLES_SET = new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9));
 
@@ -127,15 +120,16 @@ public class SudokuSolver {
     }
 
     static int seeIfOnlyOnePossible(int blank_i, int blank_j) {
-        System.out.println("seeIfOnlyOnePossible " + blank_i + ", " + blank_j);
+        System.out.print("seeIfOnlyOnePossible " + blank_i + ", " + blank_j);
         ArrayList<Integer> possibles = possiblesGrid[blank_i][blank_j];
         if (possibles.size() == 1) {
             int onlyChoice = possibles.get(0);
             markAnswer(blank_i, blank_j, onlyChoice);
+            System.out.println("\n*** SOLVED (only possible) " + blank_i + ", " + blank_j + " = " + onlyChoice);
             return onlyChoice;
         } else {
             possiblesGrid[blank_i][blank_j] = possibles;
-            System.out.println("possibles " + possibles);
+            System.out.println(" possibles " + possibles);
             return BLANK;
         }
     }
@@ -154,6 +148,8 @@ public class SudokuSolver {
             }
             if (!thisPossibleExistsElsewhere) {
                 markAnswer(blank_i, blank_j, x);
+                System.out.println(
+                        "\n*** SOLVED (only place for possible) " + blank_i + ", " + blank_j + " = " + x);
                 return x;
             }
             thisPossibleExistsElsewhere = false;
@@ -168,6 +164,8 @@ public class SudokuSolver {
             }
             if (!thisPossibleExistsElsewhere) {
                 markAnswer(blank_i, blank_j, x);
+                System.out.println(
+                        "\n*** SOLVED (only place for possible) " + blank_i + ", " + blank_j + " = " + x);
                 return x;
             }
             int squareStartX = getSquareCorner(blank_i);
@@ -186,6 +184,8 @@ public class SudokuSolver {
             }
             if (!thisPossibleExistsElsewhere) {
                 markAnswer(blank_i, blank_j, x);
+                System.out.println(
+                        "\n*** SOLVED (only place for possible) " + blank_i + ", " + blank_j + " = " + x);
                 return x;
             }
         }
@@ -196,18 +196,9 @@ public class SudokuSolver {
         boolean dirty = false;
         for (int i = 0; i < 9; i++) {
             for (int j = 0; j < 9; j++) {
-                if (grid[i][j] == BLANK && seeIfOnlyOnePossible(i, j) != BLANK) {
+                if (grid[i][j] == BLANK
+                        && (seeIfOnlyOnePossible(i, j) != BLANK || seeIfAPossibleCantGoAnywhereElse(i, j) != BLANK)) {
                     dirty = true;
-                    System.out.println("\n*** SOLVED (only possible) " + i + ", " + j + " = " + grid[i][j]);
-                }
-            }
-        }
-        for (int i = 0; i < 9; i++) {
-            for (int j = 0; j < 9; j++) {
-                if (grid[i][j] == BLANK && seeIfAPossibleCantGoAnywhereElse(i, j) != BLANK) {
-                    dirty = true;
-                    System.out
-                            .println("\n*** SOLVED (only place for possible) " + i + ", " + j + " = " + grid[i][j]);
                 }
             }
         }
