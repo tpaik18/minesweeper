@@ -44,7 +44,7 @@ public class SudokuSolver {
         }
     }
 
-    static void initialize(String csvFilename) {
+    static void readGridFromFile(String csvFilename) {
         try {
             Scanner sc = new Scanner(new File(csvFilename));
             sc.useDelimiter(",");
@@ -68,60 +68,13 @@ public class SudokuSolver {
         }
     }
 
+    // find the index of the upper left corner of the 3x3 square that contains this
+    static int getSquareCorner(int index) {
+        return Math.floorDiv(index, 3) * 3;
+    }
+
     static void computePossibles(int blank_i, int blank_j) {
         System.out.println("computePossibles " + blank_i + ", " + blank_j);
-        ArrayList<Integer> possibles = (ArrayList<Integer>) POSSIBLES_SET.clone();
-        for (int i = 0; i < 9; i++) {
-            if (grid[i][blank_j] != BLANK) {
-                possibles.remove(Integer.valueOf(grid[i][blank_j]));
-                System.out.print(" " + grid[i][blank_j]);
-            }
-        }
-        for (int j = 0; j < 9; j++) {
-            if (grid[blank_i][j] != BLANK) {
-                possibles.remove(Integer.valueOf(grid[blank_i][j]));
-                System.out.print(" " + grid[blank_i][j]);
-            }
-        }
-        int squareStartX = Math.floorDiv(blank_i, 3) * 3;
-        int squareStartY = Math.floorDiv(blank_j, 3) * 3;
-        for (int i = squareStartX; i < squareStartX + 3; i++) {
-            for (int j = squareStartY; j < squareStartY + 3; j++) {
-                if (grid[i][j] != BLANK) {
-                    possibles.remove(Integer.valueOf(grid[i][j]));
-                    System.out.print(" " + grid[i][j]);
-                }
-            }
-        }
-    }
-
-    static void markAnswer(int blank_i, int blank_j, int answer) {
-        grid[blank_i][blank_j] = answer;
-        possiblesGrid[blank_i][blank_j] = null;
-        // remove onlyChoice from possibles of this blank's row or col
-        for (int i = 0; i < 9; i++) {
-            if (i != blank_i && possiblesGrid[i][blank_j] != null) {
-                possiblesGrid[i][blank_j].remove(Integer.valueOf(answer));
-            }
-        }
-        for (int j = 0; j < 9; j++) {
-            if (j != blank_j && possiblesGrid[blank_i][j] != null) {
-                possiblesGrid[blank_i][j].remove(Integer.valueOf(answer));
-            }
-        }
-        int squareStartX = Math.floorDiv(blank_i, 3) * 3;
-        int squareStartY = Math.floorDiv(blank_j, 3) * 3;
-        for (int i = squareStartX; i < squareStartX + 3; i++) {
-            for (int j = squareStartY; j < squareStartY + 3; j++) {
-                if ((i != blank_i || j != blank_j) && possiblesGrid[i][j] != null) {
-                    possiblesGrid[i][j].remove(Integer.valueOf(answer));
-                }
-            }
-        }
-    }
-
-    static int seeIfOnlyOnePossible(int blank_i, int blank_j) {
-        System.out.println("solveBlankIfPossible " + blank_i + ", " + blank_j);
         ArrayList<Integer> possibles = (ArrayList<Integer>) POSSIBLES_SET.clone();
         for (int i = 0; i < 9; i++) {
             if (grid[i][blank_j] != BLANK) {
@@ -135,8 +88,8 @@ public class SudokuSolver {
                 System.out.print(" r" + grid[blank_i][j]);
             }
         }
-        int squareStartX = Math.floorDiv(blank_i, 3) * 3;
-        int squareStartY = Math.floorDiv(blank_j, 3) * 3;
+        int squareStartX = getSquareCorner(blank_i);
+        int squareStartY = getSquareCorner(blank_j);
         for (int i = squareStartX; i < squareStartX + 3; i++) {
             for (int j = squareStartY; j < squareStartY + 3; j++) {
                 if (grid[i][j] != BLANK) {
@@ -145,6 +98,37 @@ public class SudokuSolver {
                 }
             }
         }
+        possiblesGrid[blank_i][blank_j] = possibles;
+    }
+
+    static void markAnswer(int blank_i, int blank_j, int answer) {
+        grid[blank_i][blank_j] = answer;
+        possiblesGrid[blank_i][blank_j] = null;
+        // remove answer from all possibles of this blank's row, col, or square
+        for (int i = 0; i < 9; i++) {
+            if (i != blank_i && possiblesGrid[i][blank_j] != null) {
+                possiblesGrid[i][blank_j].remove(Integer.valueOf(answer));
+            }
+        }
+        for (int j = 0; j < 9; j++) {
+            if (j != blank_j && possiblesGrid[blank_i][j] != null) {
+                possiblesGrid[blank_i][j].remove(Integer.valueOf(answer));
+            }
+        }
+        int squareStartX = getSquareCorner(blank_i);
+        int squareStartY = getSquareCorner(blank_j);
+        for (int i = squareStartX; i < squareStartX + 3; i++) {
+            for (int j = squareStartY; j < squareStartY + 3; j++) {
+                if ((i != blank_i || j != blank_j) && possiblesGrid[i][j] != null) {
+                    possiblesGrid[i][j].remove(Integer.valueOf(answer));
+                }
+            }
+        }
+    }
+
+    static int seeIfOnlyOnePossible(int blank_i, int blank_j) {
+        System.out.println("seeIfOnlyOnePossible " + blank_i + ", " + blank_j);
+        ArrayList<Integer> possibles = possiblesGrid[blank_i][blank_j];
         if (possibles.size() == 1) {
             int onlyChoice = possibles.get(0);
             markAnswer(blank_i, blank_j, onlyChoice);
@@ -186,9 +170,8 @@ public class SudokuSolver {
                 markAnswer(blank_i, blank_j, x);
                 return x;
             }
-
-            int squareStartX = Math.floorDiv(blank_i, 3) * 3;
-            int squareStartY = Math.floorDiv(blank_j, 3) * 3;
+            int squareStartX = getSquareCorner(blank_i);
+            int squareStartY = getSquareCorner(blank_j);
             thisPossibleExistsElsewhere = false;
             for (int i = squareStartX; i < squareStartX + 3; i++) {
                 for (int j = squareStartY; j < squareStartY + 3; j++) {
@@ -213,23 +196,18 @@ public class SudokuSolver {
         boolean dirty = false;
         for (int i = 0; i < 9; i++) {
             for (int j = 0; j < 9; j++) {
-                if (grid[i][j] == BLANK) {
-                    int answer = seeIfOnlyOnePossible(i, j);
-                    if (answer != BLANK) {
-                        dirty = true;
-                        System.out.println("\n*** SOLVED (only possible) " + i + ", " + j + " = " + answer);
-                    }
+                if (grid[i][j] == BLANK && seeIfOnlyOnePossible(i, j) != BLANK) {
+                    dirty = true;
+                    System.out.println("\n*** SOLVED (only possible) " + i + ", " + j + " = " + grid[i][j]);
                 }
             }
         }
         for (int i = 0; i < 9; i++) {
             for (int j = 0; j < 9; j++) {
-                if (grid[i][j] == BLANK) {
-                    int answer = seeIfAPossibleCantGoAnywhereElse(i, j);
-                    if (answer != BLANK) {
-                        dirty = true;
-                        System.out.println("\n*** SOLVED (only place for possible) " + i + ", " + j + " = " + answer);
-                    }
+                if (grid[i][j] == BLANK && seeIfAPossibleCantGoAnywhereElse(i, j) != BLANK) {
+                    dirty = true;
+                    System.out
+                            .println("\n*** SOLVED (only place for possible) " + i + ", " + j + " = " + grid[i][j]);
                 }
             }
         }
@@ -245,7 +223,14 @@ public class SudokuSolver {
             System.err.println("First argument must be the grid CSV filename");
             System.exit(1);
         }
-        initialize(args[0]);
+        readGridFromFile(args[0]);
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                if (grid[i][j] == BLANK) {
+                    computePossibles(i, j);
+                }
+            }
+        }
         while (!isSolved()) {
             testEachBlank();
         }
