@@ -136,53 +136,45 @@ public class SudokuSolver {
 
     static int seeIfAPossibleCantGoAnywhereElse(int blank_i, int blank_j) {
         for (int x : possiblesGrid[blank_i][blank_j]) {
-            boolean thisPossibleExistsElsewhere = false;
+            boolean thisPossibleExistsInCol = false;
+            boolean thisPossibleExistsInRow = false;
+            boolean thisPossibleExistsInSquare = false;
             for (int i = 0; i < 9; i++) {
                 if (i != blank_i) {
                     ArrayList<Integer> possiblesForOtherSquare = possiblesGrid[i][blank_j];
                     if (possiblesForOtherSquare != null && possiblesForOtherSquare.contains(x)) {
-                        thisPossibleExistsElsewhere = true;
+                        thisPossibleExistsInCol = true;
                         break;
                     }
                 }
             }
-            if (!thisPossibleExistsElsewhere) {
-                markAnswer(blank_i, blank_j, x);
-                System.out.println(
-                        "\n*** SOLVED (only place for possible) " + blank_i + ", " + blank_j + " = " + x);
-                return x;
-            }
-            thisPossibleExistsElsewhere = false;
-            for (int j = 0; j < 9; j++) {
-                if (j != blank_j) {
-                    ArrayList<Integer> possiblesForOtherSquare = possiblesGrid[blank_i][j];
-                    if (possiblesForOtherSquare != null && possiblesForOtherSquare.contains(x)) {
-                        thisPossibleExistsElsewhere = true;
-                        break;
-                    }
-                }
-            }
-            if (!thisPossibleExistsElsewhere) {
-                markAnswer(blank_i, blank_j, x);
-                System.out.println(
-                        "\n*** SOLVED (only place for possible) " + blank_i + ", " + blank_j + " = " + x);
-                return x;
-            }
-            int squareStartX = getSquareCorner(blank_i);
-            int squareStartY = getSquareCorner(blank_j);
-            thisPossibleExistsElsewhere = false;
-            for (int i = squareStartX; i < squareStartX + 3; i++) {
-                for (int j = squareStartY; j < squareStartY + 3; j++) {
-                    if (i != blank_i || j != blank_j) {
-                        ArrayList<Integer> possiblesForOtherSquare = possiblesGrid[i][j];
+            if (thisPossibleExistsInCol) {
+                for (int j = 0; j < 9; j++) {
+                    if (j != blank_j) {
+                        ArrayList<Integer> possiblesForOtherSquare = possiblesGrid[blank_i][j];
                         if (possiblesForOtherSquare != null && possiblesForOtherSquare.contains(x)) {
-                            thisPossibleExistsElsewhere = true;
+                            thisPossibleExistsInRow = true;
                             break;
                         }
                     }
                 }
+                if (thisPossibleExistsInRow) {
+                    int squareStartX = getSquareCorner(blank_i);
+                    int squareStartY = getSquareCorner(blank_j);
+                    for (int i = squareStartX; i < squareStartX + 3; i++) {
+                        for (int j = squareStartY; j < squareStartY + 3; j++) {
+                            if (i != blank_i || j != blank_j) {
+                                ArrayList<Integer> possiblesForOtherSquare = possiblesGrid[i][j];
+                                if (possiblesForOtherSquare != null && possiblesForOtherSquare.contains(x)) {
+                                    thisPossibleExistsInSquare = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            if (!thisPossibleExistsElsewhere) {
+            if (!thisPossibleExistsInCol || !thisPossibleExistsInRow || !thisPossibleExistsInSquare) {
                 markAnswer(blank_i, blank_j, x);
                 System.out.println(
                         "\n*** SOLVED (only place for possible) " + blank_i + ", " + blank_j + " = " + x);
