@@ -7,14 +7,19 @@ import java.util.*;
 
 public class SudokuSolver {
     public static final int BLANK = -1;
+    public static ArrayList<Integer> POSSIBLES_SET = new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9));
     static int[][] grid = new int[9][9];
     static ArrayList<Integer>[][] possiblesGrid = new ArrayList[9][9];
 
-    public static ArrayList<Integer> POSSIBLES_SET = new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9));
-
     static void printGrid() {
         for (int i = 0; i < 9; i++) {
-            System.out.println(Arrays.toString(grid[i]));
+            for (int j = 0; j < 9; j++) {
+                System.out.print(grid[i][j] == BLANK ? " " : grid[i][j]);
+                if (j < 8) {
+                    System.out.print(",");
+                }
+            }
+            System.out.println();
         }
     }
 
@@ -66,9 +71,11 @@ public class SudokuSolver {
         return Math.floorDiv(index, 3) * 3;
     }
 
+    // "Possibles" are called "Hints" in sudoku sites -- the small numbers you write
+    // in as possible candidates for this square
     static void computePossibles(int blank_i, int blank_j) {
         System.out.println("computePossibles " + blank_i + ", " + blank_j);
-        ArrayList<Integer> possibles = (ArrayList<Integer>) POSSIBLES_SET.clone();
+        ArrayList<Integer> possibles = new ArrayList<Integer>(POSSIBLES_SET);
         for (int i = 0; i < 9; i++) {
             if (grid[i][blank_j] != BLANK) {
                 possibles.remove(Integer.valueOf(grid[i][blank_j]));
@@ -99,12 +106,12 @@ public class SudokuSolver {
         possiblesGrid[blank_i][blank_j] = null;
         // remove answer from all possibles of this blank's row, col, or square
         for (int i = 0; i < 9; i++) {
-            if (i != blank_i && possiblesGrid[i][blank_j] != null) {
+            if (possiblesGrid[i][blank_j] != null) {
                 possiblesGrid[i][blank_j].remove(Integer.valueOf(answer));
             }
         }
         for (int j = 0; j < 9; j++) {
-            if (j != blank_j && possiblesGrid[blank_i][j] != null) {
+            if (possiblesGrid[blank_i][j] != null) {
                 possiblesGrid[blank_i][j].remove(Integer.valueOf(answer));
             }
         }
@@ -112,7 +119,7 @@ public class SudokuSolver {
         int squareStartY = getSquareCorner(blank_j);
         for (int i = squareStartX; i < squareStartX + 3; i++) {
             for (int j = squareStartY; j < squareStartY + 3; j++) {
-                if ((i != blank_i || j != blank_j) && possiblesGrid[i][j] != null) {
+                if (possiblesGrid[i][j] != null) {
                     possiblesGrid[i][j].remove(Integer.valueOf(answer));
                 }
             }
@@ -184,7 +191,9 @@ public class SudokuSolver {
         return BLANK;
     }
 
-    static void testEachBlank() {
+    // Main logic: Scan entire grid looking for solvable squares
+    // If went through the whole grid and couldn't solve anything, we're stuck
+    static void solveMoreBlanks() {
         boolean dirty = false;
         for (int i = 0; i < 9; i++) {
             for (int j = 0; j < 9; j++) {
@@ -195,7 +204,7 @@ public class SudokuSolver {
             }
         }
         if (!dirty) {
-            System.out.println("I'm stuck");
+            System.out.println("SHUCKS I'M STUCK");
             printGrid();
             System.exit(1);
         }
@@ -215,7 +224,7 @@ public class SudokuSolver {
             }
         }
         while (!isSolved()) {
-            testEachBlank();
+            solveMoreBlanks();
         }
         printGrid();
     }
