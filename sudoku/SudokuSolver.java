@@ -135,7 +135,6 @@ public class SudokuSolver {
             System.out.println("\n*** SOLVED (only possible) " + blank_i + ", " + blank_j + " = " + onlyChoice);
             return onlyChoice;
         } else {
-            possiblesGrid[blank_i][blank_j] = possibles;
             System.out.println(" possibles " + possibles);
             return BLANK;
         }
