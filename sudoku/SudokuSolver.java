@@ -9,7 +9,10 @@ public class SudokuSolver {
     public static final int BLANK = -1;
     public static ArrayList<Integer> POSSIBLES_SET = new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9));
     static int[][] grid = new int[9][9];
-    static ArrayList<Integer>[][] possiblesGrid = new ArrayList[9][9];
+
+    // first dimension is the possible numbers 1-9, second and third dimensions are
+    // the grid coords. Java initializes to false
+    static boolean[][][] possiblesGrid = new boolean[9][9][9];
 
     static void printGrid() {
         for (int i = 0; i < 9; i++) {
@@ -71,121 +74,106 @@ public class SudokuSolver {
         return Math.floorDiv(index, 3) * 3;
     }
 
-    // "Possibles" are called "Hints" in sudoku sites -- the small numbers you write
-    // in as possible candidates for this square
-    static void computePossibles(int blank_i, int blank_j) {
-        System.out.println("computePossibles " + blank_i + ", " + blank_j);
-        ArrayList<Integer> possibles = new ArrayList<Integer>(POSSIBLES_SET);
-        for (int i = 0; i < 9; i++) {
-            if (grid[i][blank_j] != BLANK) {
-                possibles.remove(Integer.valueOf(grid[i][blank_j]));
-                System.out.print(" c" + grid[i][blank_j]);
-            }
-        }
+    static boolean rowContains(int i, int possible) {
         for (int j = 0; j < 9; j++) {
-            if (grid[blank_i][j] != BLANK) {
-                possibles.remove(Integer.valueOf(grid[blank_i][j]));
-                System.out.print(" r" + grid[blank_i][j]);
+            if (grid[i][j] == possible) {
+                return true;
             }
         }
-        int squareStartX = getSquareCorner(blank_i);
-        int squareStartY = getSquareCorner(blank_j);
-        for (int i = squareStartX; i < squareStartX + 3; i++) {
-            for (int j = squareStartY; j < squareStartY + 3; j++) {
-                if (grid[i][j] != BLANK) {
-                    possibles.remove(Integer.valueOf(grid[i][j]));
-                    System.out.print(" s" + grid[i][j]);
+        return false;
+    }
+
+    static boolean colContains(int j, int possible) {
+        for (int i = 0; i < 9; i++) {
+            if (grid[i][j] == possible) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static boolean squareContains(int i, int j, int possible) {
+        int cornerX = getSquareCorner(i);
+        int cornerY = getSquareCorner(j);
+        for (int x = cornerX; x < cornerX + 3; x++) {
+            for (int y = cornerY; y < cornerY + 3; y++) {
+                if (grid[x][y] == possible) {
+                    return true;
                 }
             }
         }
-        possiblesGrid[blank_i][blank_j] = possibles;
+        return false;
+    }
+
+    // "Possibles" are called "Hints" in sudoku sites -- the small numbers you write
+    // in as possible candidates for this square
+    static void computePossibles() {
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                if (grid[i][j] != BLANK) {
+                    continue;
+                }
+                for (int possible : POSSIBLES_SET) {
+                    possiblesGrid[possible - 1][i][j] = !(rowContains(i, possible) || colContains(j, possible)
+                            || squareContains(i, j, possible));
+                }
+            }
+        }
     }
 
     static void markAnswer(int blank_i, int blank_j, int answer) {
         grid[blank_i][blank_j] = answer;
-        possiblesGrid[blank_i][blank_j] = null;
         // remove answer from all possibles of this blank's row, col, or square
         for (int i = 0; i < 9; i++) {
-            if (possiblesGrid[i][blank_j] != null) {
-                possiblesGrid[i][blank_j].remove(Integer.valueOf(answer));
-            }
+            possiblesGrid[answer - 1][i][blank_j] = false;
         }
         for (int j = 0; j < 9; j++) {
-            if (possiblesGrid[blank_i][j] != null) {
-                possiblesGrid[blank_i][j].remove(Integer.valueOf(answer));
-            }
+            possiblesGrid[answer - 1][blank_i][j] = false;
         }
-        int squareStartX = getSquareCorner(blank_i);
-        int squareStartY = getSquareCorner(blank_j);
-        for (int i = squareStartX; i < squareStartX + 3; i++) {
-            for (int j = squareStartY; j < squareStartY + 3; j++) {
-                if (possiblesGrid[i][j] != null) {
-                    possiblesGrid[i][j].remove(Integer.valueOf(answer));
-                }
+        int cornerX = getSquareCorner(blank_i);
+        int cornerY = getSquareCorner(blank_j);
+        for (int i = cornerX; i < cornerX + 3; i++) {
+            for (int j = cornerY; j < cornerY + 3; j++) {
+                possiblesGrid[answer - 1][i][j] = false;
             }
         }
     }
 
     static int seeIfOnlyOnePossible(int blank_i, int blank_j) {
         System.out.print("seeIfOnlyOnePossible " + blank_i + ", " + blank_j);
-        ArrayList<Integer> possibles = possiblesGrid[blank_i][blank_j];
-        if (possibles.size() == 1) {
-            int onlyChoice = possibles.get(0);
+        ArrayList<Integer> choices = new ArrayList<Integer>();
+        for (int x : POSSIBLES_SET) {
+            if (possiblesGrid[x - 1][blank_i][blank_j]) {
+                choices.add(x);
+            }
+        }
+        if (choices.size() == 1) {
+            int onlyChoice = choices.get(0);
             markAnswer(blank_i, blank_j, onlyChoice);
             System.out.println("\n*** SOLVED (only possible) " + blank_i + ", " + blank_j + " = " + onlyChoice);
             return onlyChoice;
         } else {
-            System.out.println(" possibles " + possibles);
+            System.out.println(" possibles " + choices);
             return BLANK;
         }
     }
 
+    // TODO FIX UP THIS METHOD
     static int seeIfAPossibleCantGoAnywhereElse(int blank_i, int blank_j) {
-        for (int x : possiblesGrid[blank_i][blank_j]) {
-            boolean thisPossibleExistsInCol = false;
-            boolean thisPossibleExistsInRow = false;
-            boolean thisPossibleExistsInSquare = false;
-            for (int i = 0; i < 9; i++) {
-                if (i != blank_i) {
-                    ArrayList<Integer> possiblesForOtherSquare = possiblesGrid[i][blank_j];
-                    if (possiblesForOtherSquare != null && possiblesForOtherSquare.contains(x)) {
-                        thisPossibleExistsInCol = true;
-                        break;
-                    }
-                }
+        for (int x : POSSIBLES_SET) {
+            if (possiblesGrid[x - 1][blank_i][blank_j]) {
+                // check row to see if all others false
+                ArrayList<Boolean> thisRowPossibles = Arrays.asList(possiblesGrid[x - 1][blank_i]);
+                // check col to see if all others false
+                // check square to see if all others false
             }
-            if (thisPossibleExistsInCol) {
-                for (int j = 0; j < 9; j++) {
-                    if (j != blank_j) {
-                        ArrayList<Integer> possiblesForOtherSquare = possiblesGrid[blank_i][j];
-                        if (possiblesForOtherSquare != null && possiblesForOtherSquare.contains(x)) {
-                            thisPossibleExistsInRow = true;
-                            break;
-                        }
-                    }
-                }
-                if (thisPossibleExistsInRow) {
-                    int squareStartX = getSquareCorner(blank_i);
-                    int squareStartY = getSquareCorner(blank_j);
-                    for (int i = squareStartX; i < squareStartX + 3; i++) {
-                        for (int j = squareStartY; j < squareStartY + 3; j++) {
-                            if (i != blank_i || j != blank_j) {
-                                ArrayList<Integer> possiblesForOtherSquare = possiblesGrid[i][j];
-                                if (possiblesForOtherSquare != null && possiblesForOtherSquare.contains(x)) {
-                                    thisPossibleExistsInSquare = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            if (!thisPossibleExistsInCol || !thisPossibleExistsInRow || !thisPossibleExistsInSquare) {
-                markAnswer(blank_i, blank_j, x);
-                System.out.println(
-                        "\n*** SOLVED (only place for possible) " + blank_i + ", " + blank_j + " = " + x);
-                return x;
-            }
+        }
+
+        if (!thisPossibleExistsInCol || !thisPossibleExistsInRow || !thisPossibleExistsInSquare) {
+            markAnswer(blank_i, blank_j, x);
+            System.out.println(
+                    "\n*** SOLVED (only place for possible) " + blank_i + ", " + blank_j + " = " + x);
+            return x;
         }
         return BLANK;
     }
@@ -215,13 +203,7 @@ public class SudokuSolver {
             System.exit(1);
         }
         readGridFromFile(args[0]);
-        for (int i = 0; i < 9; i++) {
-            for (int j = 0; j < 9; j++) {
-                if (grid[i][j] == BLANK) {
-                    computePossibles(i, j);
-                }
-            }
-        }
+        computePossibles();
         while (!isSolved()) {
             solveMoreBlanks();
         }
